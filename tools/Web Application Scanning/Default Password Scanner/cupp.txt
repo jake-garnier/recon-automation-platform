@@ -1,0 +1,13 @@
+cupp
+====
+
+URL: https://github.com/Mebus/cupp
+
+Common User Passwords Profiler. Generates targeted wordlists based on information about the target (name, birthday, pet, etc.).
+
+Usage: Generate custom wordlists for targeted brute-forcing.
+Input: Target personal information (interactive prompts).
+Output: Custom wordlist file.
+
+Example:
+  python3 cupp.py -i

@@ -1,0 +1,147 @@
+#cloud-config
+# Hetzner CPX21 WireGuard egress node for the hackerOne recon pool.
+#
+# Each node serves ONE Kali WG client. Placeholders substituted at provision
+# time before submitting user_data via Hetzner API:
+#
+#   __SERVER_PRIVATE_KEY__   server WG private key (b64, 44 chars)
+#   __CLIENT_PUBLIC_KEY__    Kali-side client WG public key for THIS node
+#   __WG_SUBNET__            e.g. 10.13.2.0/24
+#   __SERVER_WG_IP__         e.g. 10.13.2.1
+#   __CLIENT_WG_IP__         e.g. 10.13.2.2 (added to AllowedIPs)
+#   __HOSTNAME__             e.g. recon-egress-hil
+#   __TAILSCALE_AUTH_KEY__   tskey-auth-... for management SSH (NOT exit-node mode)
+
+package_update: true
+package_upgrade: false
+
+packages:
+  - wireguard
+  - wireguard-tools
+  - ufw
+  - vnstat
+  - iperf3
+  - curl
+  - htop
+  - tcpdump
+  - jq
+  - unattended-upgrades
+
+write_files:
+  - path: /etc/hostname
+    permissions: '0644'
+    content: |
+      __HOSTNAME__
+
+  - path: /etc/modules-load.d/nf_conntrack.conf
+    permissions: '0644'
+    content: |
+      nf_conntrack
+
+  - path: /etc/sysctl.d/99-wg-egress.conf
+    permissions: '0644'
+    content: |
+      # IP forwarding required to route client traffic to the internet
+      net.ipv4.ip_forward = 1
+      net.ipv6.conf.all.forwarding = 1
+
+      # Larger conntrack table for high-fanout recon scans
+      net.netfilter.nf_conntrack_max = 524288
+      net.nf_conntrack_max = 524288
+
+      # Faster TIME_WAIT recycling (recon = many short-lived connections)
+      net.ipv4.tcp_fin_timeout = 15
+      net.ipv4.tcp_tw_reuse = 1
+
+      # Larger ephemeral port range
+      net.ipv4.ip_local_port_range = 10000 65535
+
+      # Larger socket buffers
+      net.core.rmem_max = 16777216
+      net.core.wmem_max = 16777216
+
+  - path: /etc/wireguard/wg0.conf
+    permissions: '0600'
+    content: |
+      [Interface]
+      PrivateKey = __SERVER_PRIVATE_KEY__
+      Address = __SERVER_WG_IP__/24
+      ListenPort = 51820
+      # MASQUERADE so client packets get our public IP source as they egress eth0
+      PostUp   = iptables -t nat -A POSTROUTING -s __WG_SUBNET__ -o eth0 -j MASQUERADE
+      PostUp   = iptables -A FORWARD -i wg0 -j ACCEPT
+      PostUp   = iptables -A FORWARD -o wg0 -j ACCEPT
+      PostDown = iptables -t nat -D POSTROUTING -s __WG_SUBNET__ -o eth0 -j MASQUERADE
+      PostDown = iptables -D FORWARD -i wg0 -j ACCEPT
+      PostDown = iptables -D FORWARD -o wg0 -j ACCEPT
+
+      [Peer]
+      # Kali VM (the one and only client of this egress node)
+      PublicKey = __CLIENT_PUBLIC_KEY__
+      AllowedIPs = __CLIENT_WG_IP__/32
+
+  - path: /etc/apt/apt.conf.d/51unattended-security
+    permissions: '0644'
+    content: |
+      Unattended-Upgrade::Allowed-Origins {
+        "Debian:bookworm-security";
+        "Debian:bookworm-updates";
+      };
+
+  - path: /etc/systemd/system/tailscale-mgmt-up.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Tailscale management plane (NOT exit-node — SSH access only)
+      After=tailscaled.service network-online.target
+      Wants=tailscaled.service network-online.target
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      # --advertise-tags=tag:exit so the existing ACL allowing admin->tag:exit SSH applies.
+      # IMPORTANT: NO --advertise-exit-node — these nodes are WG-egress, not Tailscale-exit.
+      ExecStart=/usr/bin/tailscale up --auth-key=__TAILSCALE_AUTH_KEY__ --advertise-tags=tag:exit --hostname=__HOSTNAME__ --ssh
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  - hostnamectl set-hostname __HOSTNAME__
+  - modprobe nf_conntrack
+  - sysctl --system
+
+  # WireGuard: enable + start
+  - systemctl enable --now wg-quick@wg0
+
+  # Tailscale (management SSH only; NOT advertising as exit node)
+  - curl -fsSL https://tailscale.com/install.sh | sh
+  - systemctl daemon-reload
+  - systemctl enable --now tailscaled
+  - systemctl enable --now tailscale-mgmt-up
+
+  # UFW: lock down everything except SSH (Tailscale or direct), WG listen, Tailscale UDP.
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow 22/tcp comment 'SSH'
+  - ufw allow 51820/udp comment 'WireGuard'
+  - ufw allow 41641/udp comment 'Tailscale Wireguard'
+  - ufw allow in on wg0
+  - ufw allow in on tailscale0
+  - ufw --force enable
+
+  # vnstat for traffic accounting
+  - systemctl enable --now vnstat
+
+  # Harden SSH: key-only (cloud-init already injects SSH keys)
+  - sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+  - sed -i 's/^#*PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+  - systemctl restart ssh
+
+  - systemctl enable --now unattended-upgrades
+
+  # Log final state for debugging
+  - sleep 5
+  - wg show > /var/log/wg-final-state.log 2>&1 || true
+  - ip addr > /var/log/ip-final-state.log 2>&1
+  - ufw status verbose > /var/log/ufw-final-state.log 2>&1

@@ -1,0 +1,10 @@
+shhgit
+======
+
+URL: https://github.com/eth0izzle/shhgit
+
+Real-time GitHub secret monitoring. Watches GitHub events stream for committed secrets. Can also scan local repos.
+
+Usage: Real-time monitoring for GitHub secret exposure.
+Input: GitHub events stream or local repos.
+Output: Detected secrets in real-time.

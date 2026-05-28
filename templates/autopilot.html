@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Autopilot — H1 Bounty Browser{% endblock %}
+
+{% block extra_head %}
+<style>
+    .run-card {
+        padding: 1rem 1.25rem;
+        border-radius: 8px;
+        background: var(--pico-card-background-color);
+        border: 1px solid var(--pico-muted-border-color);
+        margin-bottom: 0.75rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .run-card.run-running { border-left: 4px solid #f1c40f; }
+    .run-card.run-completed { border-left: 4px solid #2ecc40; }
+    .run-card.run-failed { border-left: 4px solid #ff4136; }
+    .run-card.run-awaiting_approval { border-left: 4px solid #3498db; }
+
+    .run-handle { font-weight: 700; font-size: 1.05rem; }
+    .run-meta { opacity: 0.7; font-size: 0.85rem; }
+
+    .phase-badge {
+        padding: 0.2em 0.6em;
+        border-radius: 4px;
+        font-size: 0.75em;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .phase-badge-running { background: #f1c40f; color: #000; }
+    .phase-badge-completed { background: #2ecc40; color: #fff; }
+    .phase-badge-failed { background: #ff4136; color: #fff; }
+    .phase-badge-awaiting_approval { background: #3498db; color: #fff; }
+    .phase-badge-pending { background: #555; color: #aaa; }
+
+    .result-count {
+        font-size: 0.8rem;
+        opacity: 0.6;
+    }
+    .elapsed {
+        font-family: monospace;
+        font-size: 0.85rem;
+        opacity: 0.8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Autopilot</h1>
+
+{% set running = pipelines | selectattr('phase_status', 'eq', 'running') | list | length %}
+
+{% for p in pipelines %}
+<div class="run-card run-{{ p['phase_status'] }}">
+    <div>
+        <div class="run-handle">
+            <a href="/recon/targets/{{ p['target_id'] }}/pipeline">{{ p['program_handle'] }}</a>
+        </div>
+        <div class="run-meta">
+            Phase {{ p['current_phase'] }}/5
+            ({{ phase_names.get(p['current_phase'], '?') }})
+            &middot; {{ p['created_at'][:16] }}
+            {% if p['phase_status'] in ('running', 'awaiting_approval') %}
+            &middot; <span class="elapsed" data-start="{{ p['created_at'] }}"></span>
+            {% elif p['phase_status'] == 'completed' and p['updated_at'] %}
+            &middot; Done {{ p['updated_at'][:16] }}
+            {% endif %}
+            {% if pipeline_scan_counts.get(p['id'], 0) > 0 %}
+            &middot; <span class="result-count">{{ pipeline_scan_counts[p['id']] }} results</span>
+            {% endif %}
+        </div>
+    </div>
+    <div style="text-align:right;">
+        <span class="phase-badge phase-badge-{{ p['phase_status'] }}">
+            {{ p['phase_status'].replace('_', ' ') }}
+        </span>
+    </div>
+</div>
+{% else %}
+<p class="muted">No pipeline runs yet.</p>
+{% endfor %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function fmtElapsed(ms) {
+    const s = Math.floor(ms / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0) return h + 'h ' + m + 'm';
+    if (m > 0) return m + 'm ' + sec + 's';
+    return sec + 's';
+}
+function tickTimers() {
+    document.querySelectorAll('.elapsed[data-start]').forEach(el => {
+        const start = new Date(el.dataset.start + (el.dataset.start.includes('Z') ? '' : 'Z'));
+        el.textContent = fmtElapsed(Date.now() - start.getTime());
+    });
+}
+tickTimers();
+setInterval(tickTimers, 1000);
+
+{% if pipelines | selectattr('phase_status', 'eq', 'running') | list | length > 0 %}
+setTimeout(() => location.reload(), 30000);
+{% endif %}
+</script>
+{% endblock %}

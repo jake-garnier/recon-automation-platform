@@ -1,0 +1,180 @@
+id: firebase-supabase-misconfig
+
+info:
+  name: Firebase and Supabase Database Misconfiguration
+  author: custom
+  severity: high
+  description: |
+    Extracts Firebase/Supabase configuration from JavaScript bundles and
+    tests for unauthenticated database access. Covers Firebase Realtime DB,
+    Firestore REST API, Firebase Storage, and Supabase PostgREST API with
+    exposed anon keys.
+  tags: firebase,supabase,cloud,misconfig,data-exposure
+
+http:
+  # Step 1: Extract Firebase config from JS
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+      - "{{BaseURL}}/main.js"
+      - "{{BaseURL}}/app.js"
+      - "{{BaseURL}}/bundle.js"
+      - "{{BaseURL}}/config.js"
+      - "{{BaseURL}}/env.js"
+      - "{{BaseURL}}/static/js/main.js"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - 'firebaseConfig\s*=\s*\{'
+          - '"databaseURL"\s*:\s*"https://[^"]+\.firebaseio\.com"'
+          - '"apiKey"\s*:\s*"AIza[A-Za-z0-9_-]{35}"'
+          - 'NEXT_PUBLIC_SUPABASE_URL'
+          - 'VITE_SUPABASE_URL'
+          - 'supabaseUrl\s*[=:]\s*["\x27]https://[^"]+\.supabase\.co'
+          - 'supabaseKey\s*[=:]\s*["\x27]eyJ'
+
+    extractors:
+      - type: regex
+        name: firebase_db_url
+        part: body
+        group: 1
+        regex:
+          - '"?databaseURL"?\s*[:=]\s*"(https://[^"]+\.firebaseio\.com)"'
+
+      - type: regex
+        name: firebase_api_key
+        part: body
+        group: 1
+        regex:
+          - '"?apiKey"?\s*[:=]\s*"(AIza[A-Za-z0-9_-]{35})"'
+
+      - type: regex
+        name: firebase_project_id
+        part: body
+        group: 1
+        regex:
+          - '"?projectId"?\s*[:=]\s*"([a-z0-9-]+)"'
+
+      - type: regex
+        name: firebase_storage_bucket
+        part: body
+        group: 1
+        regex:
+          - '"?storageBucket"?\s*[:=]\s*"([^"]+\.appspot\.com)"'
+
+      - type: regex
+        name: supabase_url
+        part: body
+        group: 1
+        regex:
+          - '(?:supabaseUrl|SUPABASE_URL|NEXT_PUBLIC_SUPABASE_URL|VITE_SUPABASE_URL)\s*[=:]\s*["\x27](https://[^"\x27]+\.supabase\.co)["\x27]'
+
+      - type: regex
+        name: supabase_anon_key
+        part: body
+        group: 1
+        regex:
+          - '(?:supabaseKey|SUPABASE_ANON_KEY|NEXT_PUBLIC_SUPABASE_ANON_KEY|VITE_SUPABASE_ANON_KEY)\s*[=:]\s*["\x27](eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)["\x27]'
+
+---
+id: firebase-open-database
+
+info:
+  name: Firebase Realtime Database Open Read Access
+  author: custom
+  severity: high
+  description: |
+    Tests Firebase Realtime Database URLs for unauthenticated read access.
+    Appends /.json to the database URL to check if security rules allow
+    public reads.
+  tags: firebase,cloud,misconfig,data-exposure
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/.json"
+      - "{{BaseURL}}/.json?shallow=true"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        words:
+          - "{"
+        condition: and
+
+      - type: word
+        part: body
+        words:
+          - '"Permission denied"'
+          - '"error"'
+          - "null"
+        negative: true
+        condition: and
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+
+---
+id: supabase-open-api
+
+info:
+  name: Supabase PostgREST API Unauthenticated Table Access
+  author: custom
+  severity: high
+  description: |
+    Tests Supabase PostgREST API endpoints for unauthenticated table listing
+    and data access. When the anon key is exposed in client-side JS and
+    Row Level Security (RLS) is not properly configured, all table data
+    is publicly accessible.
+  tags: supabase,cloud,misconfig,data-exposure
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/rest/v1/"
+
+    headers:
+      Accept: application/json
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        words:
+          - '"definitions"'
+          - '"paths"'
+        condition: or
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+          - "application/openapi+json"
+        condition: or
+
+    extractors:
+      - type: regex
+        name: table_names
+        part: body
+        regex:
+          - '"(/[a-z_][a-z0-9_]*)"'
+        group: 1

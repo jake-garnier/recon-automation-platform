@@ -1,0 +1,13 @@
+altdns
+======
+
+URL: https://github.com/infosec-au/altdns
+
+Subdomain discovery through alterations and permutations. Takes existing subdomains and generates mutations (dev, staging, test prefixes, etc.) then resolves them.
+
+Usage: Generate and resolve subdomain permutations.
+Input: Known subdomains + words list.
+Output: Resolved permuted subdomains.
+
+Example:
+  altdns -i subdomains.txt -o permuted.txt -w words.txt -r -s resolved.txt

@@ -1,0 +1,13 @@
+OWASP ZAP
+=========
+
+URL: https://owasp.org/www-project-zap/
+
+Free, open-source web application security scanner by OWASP. Intercepting proxy with automated scanner, fuzzer, and extensible add-on system.
+
+Usage: Web application security testing (free alternative to Burp).
+Input: Target URL.
+Output: Vulnerability findings with risk ratings.
+
+Example:
+  zap.sh -daemon -quickurl https://example.com -quickout report.html

@@ -1,0 +1,12 @@
+Ghidra
+======
+
+URL: https://ghidra-sre.org/
+
+NSA's open-source software reverse engineering framework. Disassembler and decompiler supporting many architectures. Free alternative to IDA Pro.
+
+Usage: Binary reverse engineering and analysis.
+Input: Binary executables.
+Output: Disassembly, decompiled code, analysis.
+
+Note: Free and open-source. Java-based GUI.

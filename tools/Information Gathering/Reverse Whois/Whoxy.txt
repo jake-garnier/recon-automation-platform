@@ -1,0 +1,12 @@
+Whoxy
+=====
+
+URL: https://www.whoxy.com/reverse-whois/
+
+WHOIS and reverse WHOIS lookup service with API access. Find domains by registrant name, company, or email.
+
+Usage: Reverse WHOIS lookups and domain intelligence.
+Input: Registrant details.
+Output: Associated domains.
+
+Note: API available for programmatic access.

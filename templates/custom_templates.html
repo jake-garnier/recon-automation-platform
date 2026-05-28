@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% block title %}Custom Nuclei Templates — H1 Bounty Browser{% endblock %}
+
+{% block extra_head %}
+<style>
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .stat-card { text-align: center; padding: 1.2rem 0.8rem; border-radius: 8px; background: var(--pico-card-background-color); }
+  .stat-card .number { font-size: 2.2rem; font-weight: 700; }
+  .stat-card .label { font-size: 0.8rem; opacity: 0.7; text-transform: uppercase; }
+
+  .template-card { border: 1px solid var(--pico-muted-border-color); border-radius: 8px; padding: 1.2rem; margin-bottom: 1rem; }
+  .template-card:hover { border-color: var(--pico-primary); }
+  .template-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+  .template-header h4 { margin: 0; }
+  .template-desc { font-size: 0.9rem; opacity: 0.85; margin-bottom: 0.75rem; white-space: pre-line; }
+  .template-meta { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.82rem; opacity: 0.7; }
+  .template-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
+  .tag { display: inline-block; padding: 0.1em 0.5em; border-radius: 3px; font-size: 0.75rem; background: var(--pico-muted-border-color); }
+
+  .sev-badge { display: inline-block; padding: 0.15em 0.6em; border-radius: 4px; font-weight: 700; font-size: 0.8rem; color: #fff; }
+  .sev-critical { background: var(--sev-critical, #e74c3c); }
+  .sev-high { background: var(--sev-high, #e67e22); }
+  .sev-medium { background: var(--sev-medium, #f1c40f); color: #111; }
+  .sev-low { background: var(--sev-low, #2ecc71); }
+  .sev-info { background: #3498db; }
+
+  .test-runner { border: 1px solid var(--pico-muted-border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; }
+  .test-runner h3 { margin-top: 0; }
+  .runner-controls { display: flex; gap: 1rem; align-items: end; flex-wrap: wrap; }
+  .runner-controls select, .runner-controls button { margin-bottom: 0; }
+
+  .run-row { display: grid; grid-template-columns: 1fr 1.5fr 1.2fr 0.8fr 0.6fr 0.5fr; gap: 0.5rem; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid var(--pico-muted-border-color); font-size: 0.88rem; }
+  .run-row.header { font-weight: 700; opacity: 0.7; font-size: 0.78rem; text-transform: uppercase; }
+  .status-running { color: #f1c40f; }
+  .status-completed { color: #2ecc71; }
+  .status-failed { color: #e74c3c; }
+  .status-queued { color: #3498db; }
+
+  .results-panel { border: 1px solid var(--pico-muted-border-color); border-radius: 8px; padding: 1rem; margin-top: 1rem; display: none; }
+  .results-panel.active { display: block; }
+  .result-item { padding: 0.5rem 0; border-bottom: 1px solid var(--pico-muted-border-color); font-size: 0.88rem; }
+  .result-item:last-child { border-bottom: none; }
+
+  #test-status { margin-top: 1rem; padding: 0.75rem; border-radius: 6px; display: none; }
+  #test-status.visible { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="container">
+  <h2>Custom Nuclei Templates</h2>
+  <p>Custom-built templates targeting vulnerability classes that community templates miss. These run alongside the standard templates in every pipeline scan.</p>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="number">{{ templates|length }}</div>
+      <div class="label">Templates</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">{{ templates|selectattr('severity', 'equalto', 'critical')|list|length }}</div>
+      <div class="label">Critical</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">{{ templates|selectattr('severity', 'equalto', 'high')|list|length }}</div>
+      <div class="label">High</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">{{ templates|selectattr('severity', 'equalto', 'medium')|list|length }}</div>
+      <div class="label">Medium</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">{{ targets|length }}</div>
+      <div class="label">Testable Targets</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">{{ test_runs|length }}</div>
+      <div class="label">Test Runs</div>
+    </div>
+  </div>
+
+  <!-- Test Runner -->
+  <div class="test-runner">
+    <h3>Run Test</h3>
+    <p style="font-size:0.88rem;opacity:0.7;margin-top:-0.5rem;">Run custom templates against an existing target's httpx output. Results appear below.</p>
+    <div class="runner-controls">
+      <label>
+        Target
+        <select id="test-target" multiple size="6" style="min-width:280px;">
+          {% for t in targets %}
+          <option value="{{ t.id }}">{{ t.program_handle }} ({{ t.total_results or 0 }} results, {{ t.pipeline_completed[:10] if t.pipeline_completed else 'n/a' }})</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Template
+        <select id="test-template">
+          <option value="">All custom templates</option>
+          {% for tpl in templates %}
+          <option value="{{ tpl.file }}">{{ tpl.get('name', tpl.file) }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div>
+        <button id="btn-run-test" onclick="runTest()">Run Selected</button>
+        <p style="font-size:0.75rem;opacity:0.6;margin:0.3rem 0 0;">Hold Ctrl/Cmd to select multiple. First runs immediately, rest queue automatically.</p>
+      </div>
+    </div>
+    <div id="test-status"></div>
+  </div>
+
+  <!-- Recent Test Runs -->
+  {% if test_runs %}
+  <h3>All Test Runs</h3>
+  <div class="run-row header">
+    <span>Target</span>
+    <span>Templates</span>
+    <span>Started</span>
+    <span>Status</span>
+    <span>Results</span>
+    <span></span>
+  </div>
+  {% for run in test_runs %}
+  <div class="run-row">
+    <span><a href="/recon/targets/{{ run.target_id }}">{{ run.program_handle }}</a></span>
+    <span style="font-size:0.82rem;">{{ run.templates_used or 'All' }}</span>
+    <span>{{ run.started_at[:16] if run.started_at else '-' }}</span>
+    <span class="status-{{ run.status }}">{{ run.status }}</span>
+    <span>{{ run.result_count or 0 }}</span>
+    <span><a href="#" onclick="viewResults({{ run.scan_id }}); return false;">View</a></span>
+  </div>
+  {% endfor %}
+  <div id="run-results-panel" class="results-panel"></div>
+  {% endif %}
+
+  <!-- Template Catalog -->
+  <h3 style="margin-top:2rem;">Template Catalog</h3>
+
+  {% for tpl in templates %}
+  <div class="template-card" id="tpl-{{ tpl.get('id', loop.index) }}">
+    <div class="template-header">
+      <h4>{{ tpl.get('name', tpl.file) }}</h4>
+      <span class="sev-badge sev-{{ tpl.get('severity', 'info') }}">{{ tpl.get('severity', 'info')|upper }}</span>
+    </div>
+    {% if tpl.get('description') %}
+    <div class="template-desc">{{ tpl.description }}</div>
+    {% endif %}
+    <div class="template-meta">
+      <span>ID: <code>{{ tpl.get('id', '-') }}</code></span>
+      <span>File: <code>{{ tpl.file }}</code></span>
+      <span>Paths: {{ tpl.get('path_count', 0) }}</span>
+      <span>Matchers: {{ tpl.get('matcher_count', 0) }}</span>
+    </div>
+    {% if tpl.get('tags') %}
+    <div class="template-tags">
+      {% for tag in tpl.tags %}
+      <span class="tag">{{ tag }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let pollTimer = null;
+
+function runTest() {
+  const select = document.getElementById('test-target');
+  const selectedIds = Array.from(select.selectedOptions).map(o => parseInt(o.value));
+  const template = document.getElementById('test-template').value;
+  const statusEl = document.getElementById('test-status');
+
+  if (selectedIds.length === 0) {
+    statusEl.textContent = 'Select at least one target.';
+    statusEl.className = 'visible';
+    statusEl.style.background = 'var(--sev-high, #e67e22)';
+    return;
+  }
+
+  const btn = document.getElementById('btn-run-test');
+  btn.disabled = true;
+  btn.textContent = 'Starting...';
+  statusEl.className = 'visible';
+  statusEl.style.background = 'var(--pico-card-background-color)';
+  statusEl.textContent = `Launching ${selectedIds.length} scan(s)...`;
+
+  const body = selectedIds.length === 1
+    ? { target_id: selectedIds[0] }
+    : { target_ids: selectedIds };
+  if (template) body.template = template;
+
+  fetch('/api/custom-templates/test', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) {
+      statusEl.textContent = 'Error: ' + data.error;
+      statusEl.style.background = '#e74c3c33';
+      btn.disabled = false;
+      btn.textContent = 'Run Selected';
+      return;
+    }
+    // Single scan response
+    if (data.scan_id) {
+      statusEl.innerHTML = `Scan started against <strong>${data.target}</strong> (ID: ${data.scan_id}). Polling...`;
+      statusEl.style.background = '#f1c40f22';
+      pollForResults(data.scan_id, btn, statusEl);
+    }
+    // Batch response
+    else if (data.scans) {
+      const launched = data.scans.filter(s => s.status === 'running').length;
+      const queued = data.scans.filter(s => s.status === 'queued').length;
+      let html = `<strong>${launched}</strong> running, <strong>${queued}</strong> queued.<br>`;
+      for (const s of data.scans) {
+        const icon = s.status === 'running' ? '&#9654;' : '&#9203;';
+        html += `${icon} ${s.target} — ${s.status}<br>`;
+      }
+      html += '<br>Scans will auto-advance as each completes. Refresh to see progress.';
+      statusEl.innerHTML = html;
+      statusEl.style.background = '#3498db22';
+      btn.disabled = false;
+      btn.textContent = 'Run Selected';
+      // Auto-refresh after a delay
+      setTimeout(() => location.reload(), 10000);
+    }
+  })
+  .catch(err => {
+    statusEl.textContent = 'Request failed: ' + err;
+    statusEl.style.background = '#e74c3c33';
+    btn.disabled = false;
+    btn.textContent = 'Run Selected';
+  });
+}
+
+function pollForResults(scanId, btn, statusEl) {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(() => {
+    fetch(`/api/custom-templates/results/${scanId}`)
+      .then(r => r.json())
+      .then(data => {
+        const st = data.status;
+        if (st.status === 'completed' || st.status === 'failed') {
+          clearInterval(pollTimer);
+          pollTimer = null;
+          btn.disabled = false;
+          btn.textContent = 'Run Test';
+
+          if (st.status === 'completed') {
+            const count = data.results.length;
+            statusEl.innerHTML = `Scan complete. <strong>${count}</strong> result(s) found.`;
+            statusEl.style.background = count > 0 ? '#2ecc7122' : '#3498db22';
+            if (count > 0) {
+              showResults(data.results, statusEl);
+            }
+          } else {
+            statusEl.textContent = 'Scan failed.';
+            statusEl.style.background = '#e74c3c33';
+          }
+          // Reload page after 2s to update test runs table
+          setTimeout(() => location.reload(), 2000);
+        } else {
+          const agentSt = st.agent_status || st.status;
+          statusEl.innerHTML = `Scan running (${agentSt})... ${data.results.length} results so far.`;
+        }
+      })
+      .catch(() => {});
+  }, 5000);
+}
+
+function showResults(results, parentEl) {
+  let html = '<div style="margin-top:1rem;">';
+  for (const r of results) {
+    let meta = {};
+    try { meta = JSON.parse(r.metadata || '{}'); } catch(e) {}
+    const sev = (meta.severity || 'info').toLowerCase();
+    html += `<div class="result-item">
+      <span class="sev-badge sev-${sev}">${sev.toUpperCase()}</span>
+      <strong style="margin-left:0.5rem;">${meta.name || r.result_type}</strong>
+      <br><a href="${r.value}" target="_blank" style="font-size:0.85rem;word-break:break-all;">${r.value}</a>
+      ${meta.template_id ? '<br><code style="font-size:0.78rem;">'+meta.template_id+'</code>' : ''}
+    </div>`;
+  }
+  html += '</div>';
+  parentEl.innerHTML += html;
+}
+
+function viewResults(scanId) {
+  const panel = document.getElementById('run-results-panel');
+  panel.className = 'results-panel active';
+  panel.innerHTML = '<em>Loading results...</em>';
+
+  fetch(`/api/custom-templates/results/${scanId}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.results || data.results.length === 0) {
+        panel.innerHTML = `<p>No results for scan ${scanId}. Status: ${data.status.status}</p>`;
+        return;
+      }
+      let html = `<h4>Results for Scan #${scanId} (${data.results.length} findings)</h4>`;
+      for (const r of data.results) {
+        let meta = {};
+        try { meta = JSON.parse(r.metadata || '{}'); } catch(e) {}
+        const sev = (meta.severity || 'info').toLowerCase();
+        html += `<div class="result-item">
+          <span class="sev-badge sev-${sev}">${sev.toUpperCase()}</span>
+          <strong style="margin-left:0.5rem;">${meta.name || r.result_type}</strong>
+          <br><a href="${r.value}" target="_blank" style="font-size:0.85rem;word-break:break-all;">${r.value}</a>
+          ${meta.template_id ? '<br><code style="font-size:0.78rem;">'+meta.template_id+'</code>' : ''}
+          ${meta.description ? '<br><span style="font-size:0.82rem;opacity:0.7;">'+meta.description.substring(0,200)+'</span>' : ''}
+        </div>`;
+      }
+      panel.innerHTML = html;
+      panel.scrollIntoView({ behavior: 'smooth' });
+    })
+    .catch(err => {
+      panel.innerHTML = 'Error loading results: ' + err;
+    });
+}
+</script>
+{% endblock %}

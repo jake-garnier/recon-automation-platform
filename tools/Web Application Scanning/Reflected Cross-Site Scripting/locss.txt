@@ -1,0 +1,10 @@
+locss
+=====
+
+URL: https://github.com/tomnomnom/hacks/tree/master/locss
+
+Small tool by tomnomnom to find reflected input in HTTP responses. Useful for quickly identifying reflection points that could lead to XSS.
+
+Usage: Find reflected input in HTTP responses.
+Input: URLs with parameters.
+Output: URLs where input is reflected.

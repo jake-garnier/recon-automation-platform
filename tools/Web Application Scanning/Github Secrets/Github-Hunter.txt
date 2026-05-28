@@ -1,0 +1,10 @@
+Github-Hunter
+=============
+
+URL: https://github.com/Hell0W0rld0/Github-Hunter
+
+Tool to find sensitive information leaked on GitHub. Monitors GitHub for exposed credentials and sensitive data related to target organizations.
+
+Usage: Hunt for leaked secrets on GitHub.
+Input: Target organization/keywords.
+Output: Discovered secrets and sensitive data.

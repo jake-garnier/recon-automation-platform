@@ -1,0 +1,10 @@
+GitGot
+======
+
+URL: https://github.com/BishopFox/GitGot
+
+Semi-automated GitHub secret finder by Bishop Fox. Uses GitHub search API with smart filtering to find exposed secrets.
+
+Usage: GitHub secret discovery via search API.
+Input: Search queries targeting secrets.
+Output: Matching files with potential secrets.

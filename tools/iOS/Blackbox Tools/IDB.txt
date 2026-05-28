@@ -1,0 +1,10 @@
+IDB
+===
+
+URL: https://github.com/dmayer/idb
+
+iOS app assessment tool. Simplifies common tasks for iOS penetration testing — analyzing plists, keychains, logs, binary cookies, and more.
+
+Usage: iOS app security assessment.
+Input: Installed app on jailbroken device.
+Output: App data analysis, security findings.

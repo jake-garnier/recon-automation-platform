@@ -1,0 +1,102 @@
+id: webpack-build-manifests
+
+info:
+  name: Webpack/Build Manifest and Stats Exposure
+  author: custom
+  severity: low
+  description: |
+    Detects exposed build manifests, bundle stats, and asset listings from
+    webpack, Vite, Next.js, and Laravel Mix. These files reveal the complete
+    internal route structure, chunk names (often mapping to features/components),
+    and can contain environment variables or API endpoint mappings.
+  tags: webpack,build,exposure,recon,info-disclosure
+
+http:
+  - method: GET
+    path:
+      # React CRA
+      - "{{BaseURL}}/asset-manifest.json"
+      - "{{BaseURL}}/build/asset-manifest.json"
+      # Workbox/PWA
+      - "{{BaseURL}}/precache-manifest.js"
+      - "{{BaseURL}}/sw-precache-manifest.js"
+      # Webpack bundle analyzer
+      - "{{BaseURL}}/stats.json"
+      - "{{BaseURL}}/bundle-stats.json"
+      - "{{BaseURL}}/report.html"
+      - "{{BaseURL}}/webpack-stats.json"
+      # Laravel Mix
+      - "{{BaseURL}}/mix-manifest.json"
+      - "{{BaseURL}}/hot"
+      # Vite
+      - "{{BaseURL}}/manifest.json"
+      - "{{BaseURL}}/.vite/manifest.json"
+      - "{{BaseURL}}/build/manifest.json"
+      - "{{BaseURL}}/build/.vite/manifest.json"
+      # Next.js build manifests
+      - "{{BaseURL}}/_next/static/chunks/webpack.js"
+      - "{{BaseURL}}/_next/static/buildManifest.js"
+      - "{{BaseURL}}/_next/static/development/_buildManifest.js"
+      # Generic
+      - "{{BaseURL}}/build-manifest.json"
+      - "{{BaseURL}}/chunk-manifest.json"
+      - "{{BaseURL}}/compilation-stats.json"
+      # Nuxt.js
+      - "{{BaseURL}}/_nuxt/manifest.json"
+      - "{{BaseURL}}/.nuxt/dist/server/server.manifest.json"
+
+    stop-at-first-match: false
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          # Asset manifest patterns
+          - '"(?:main|app|vendor|runtime|chunk)\.[a-f0-9]+\.(js|css)"'
+          - '"files"\s*:\s*\{'
+          - '"entrypoints"\s*:\s*\['
+          # Bundle stats
+          - '"chunks"\s*:\s*\['
+          - '"modules"\s*:\s*\['
+          - '"assets"\s*:\s*\['
+          - '"namedChunkGroups"'
+          # Mix manifest
+          - '"/(?:js|css)/[^"]+"\s*:\s*"/(?:js|css)/[^"]+"'
+          # Vite manifest
+          - '"file"\s*:\s*"assets/[^"]+"'
+          - '"src"\s*:\s*"[^"]+"'
+          - '"isEntry"\s*:\s*true'
+          # Build manifest JS
+          - '__BUILD_MANIFEST'
+          - 'self\.__BUILD_MANIFEST_CB'
+          # Precache manifest
+          - '"url"\s*:\s*"/[^"]+\.[a-f0-9]+\.'
+          - 'self\.__precacheManifest'
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+          - "application/javascript"
+          - "text/javascript"
+        condition: or
+
+    extractors:
+      - type: regex
+        name: js_chunks
+        part: body
+        regex:
+          - '"([^"]*(?:admin|dashboard|settings|account|payment|billing|internal|config|auth|login|user|api)[^"]*\.(?:js|chunk\.js))"'
+        group: 1
+
+      - type: regex
+        name: source_paths
+        part: body
+        regex:
+          - '"src"\s*:\s*"(src/[^"]+)"'
+        group: 1

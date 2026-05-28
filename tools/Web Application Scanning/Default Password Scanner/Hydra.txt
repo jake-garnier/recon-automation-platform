@@ -1,0 +1,14 @@
+Hydra
+=====
+
+URL: https://github.com/vanhauser-thc/thc-hydra
+
+Fast and flexible network login cracker. Supports 50+ protocols including HTTP, FTP, SSH, SMB, SMTP, MySQL, and more.
+
+Usage: Multi-protocol brute-force attacks.
+Input: Target host, protocol, credential lists.
+Output: Valid credentials.
+
+Example:
+  hydra -l admin -P passwords.txt target.com ssh
+  hydra -L users.txt -P passwords.txt target.com http-post-form '/login:user=^USER^&pass=^PASS^:incorrect'

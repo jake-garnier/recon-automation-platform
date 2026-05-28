@@ -1,0 +1,14 @@
+Frida
+=====
+
+URL: https://frida.re/
+
+Dynamic instrumentation toolkit for developers, reverse-engineers, and security researchers. Inject JavaScript into native apps on any platform (iOS, Android, Windows, macOS, Linux).
+
+Usage: Runtime hooking, method tracing, bypassing security controls.
+Input: Target process + Frida scripts.
+Output: Runtime data, hooked function results.
+
+Example:
+  frida -U -n MyApp -l hook.js
+  frida-trace -U -i 'open*' MyApp

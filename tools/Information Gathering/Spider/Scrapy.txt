@@ -1,0 +1,10 @@
+Scrapy
+======
+
+URL: https://scrapy.org/
+
+Python framework for web crawling and scraping. Highly extensible with middleware, pipelines, and selectors. Good for building custom crawlers.
+
+Usage: Custom web crawling and data extraction.
+Input: Spider configuration with target URLs and extraction rules.
+Output: Structured data (JSON, CSV, etc.).

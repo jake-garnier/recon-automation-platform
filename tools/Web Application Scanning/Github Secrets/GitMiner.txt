@@ -1,0 +1,10 @@
+GitMiner
+========
+
+URL: https://github.com/UnkL4b/GitMiner
+
+Tool for mining sensitive data from GitHub. Uses GitHub search to find exposed passwords, tokens, and sensitive configurations.
+
+Usage: Search GitHub for exposed secrets.
+Input: Search dorks/queries.
+Output: Matching files with sensitive data.

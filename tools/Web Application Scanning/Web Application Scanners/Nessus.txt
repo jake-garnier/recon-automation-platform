@@ -1,0 +1,12 @@
+Nessus
+======
+
+URL: https://www.tenable.com/products/nessus
+
+Comprehensive vulnerability scanner by Tenable. Scans for known vulnerabilities, misconfigurations, and compliance issues across networks and web applications.
+
+Usage: Network and web application vulnerability scanning.
+Input: Target IPs/URLs.
+Output: Vulnerability report with CVEs and remediation.
+
+Note: Commercial software. Nessus Essentials (free) limited to 16 IPs.

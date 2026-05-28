@@ -1,0 +1,10 @@
+Grapefruit
+==========
+
+URL: https://github.com/CHiChou/Grapefruit
+
+Runtime application analysis tool for iOS apps. Web-based GUI for inspecting and manipulating iOS apps at runtime using Frida.
+
+Usage: Runtime iOS app inspection and manipulation.
+Input: Target app on device.
+Output: Runtime data, class dumps, method hooks.

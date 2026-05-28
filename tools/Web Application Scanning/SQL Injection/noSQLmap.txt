@@ -1,0 +1,10 @@
+noSQLmap
+========
+
+URL: https://github.com/codingo/NoSQLMap
+
+Automated NoSQL injection attack tool. Targets MongoDB and CouchDB injection vulnerabilities.
+
+Usage: Detect and exploit NoSQL injection vulnerabilities.
+Input: Target URL with injectable parameter.
+Output: Database enumeration, data extraction.

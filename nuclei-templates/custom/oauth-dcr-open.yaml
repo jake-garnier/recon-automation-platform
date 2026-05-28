@@ -1,0 +1,93 @@
+id: oauth-dcr-open
+
+info:
+  name: OAuth Dynamic Client Registration (DCR) Open to Unauthenticated Callers
+  author: custom
+  severity: medium
+  description: |
+    RFC 7591 Dynamic Client Registration allows any caller to register a new
+    OAuth client with their own choice of redirect_uri. When the registration
+    endpoint is reachable WITHOUT an `initial_access_token` and without an
+    `access_token`, an attacker can register a brand-new client whose
+    redirect_uri points at attacker-controlled infrastructure — completely
+    bypassing the strict-registered-URI validation that protects existing
+    clients.
+
+    Even when redirect validation is bulletproof for registered clients,
+    `/connect/register` / `/oauth2/register` / `/oidc/register` may be
+    exposed on Okta Workforce Identity, Curity, IdentityServer4, Authentik,
+    and self-hosted Keycloak. PortSwigger's "Hidden OAuth Attack Vectors"
+    research first surfaced this pattern at scale.
+
+    Beyond redirect_uri abuse, DCR also opens SSRF vectors via the metadata
+    fields the server fetches:
+      - logo_uri  → fetched for consent page
+      - jwks_uri  → fetched on token endpoint with JWT assertions
+      - sector_identifier_uri → fetched at registration
+      - request_uris → fetched at authorize endpoint
+
+    These were exploited via CVE-2021-26715 (MITREid Connect SSRF via
+    logo_uri) and remain an active class.
+
+    Detection here is reachability + status discrimination. A 200/201
+    response with `client_id` in the body is full open DCR. A 401/403 with
+    a body containing `initial_access_token` or `software_statement` means
+    registration exists but requires auth (still useful intel — softer
+    targets sometimes leak the bootstrap token).
+  reference:
+    - https://portswigger.net/research/hidden-oauth-attack-vectors
+    - https://datatracker.ietf.org/doc/html/rfc7591
+    - https://0xn3va.gitbook.io/cheat-sheets/web-application/oauth-2.0-vulnerabilities/openid-connect
+  tags: oauth,dcr,ssrf,misconfig,medium
+
+http:
+  - method: POST
+    path:
+      - "{{BaseURL}}/oauth2/register"
+      - "{{BaseURL}}/connect/register"
+      - "{{BaseURL}}/oidc/register"
+      - "{{BaseURL}}/oauth/register"
+      - "{{BaseURL}}/api/oauth2/register"
+      # Keycloak's DCR endpoint pattern
+      - "{{BaseURL}}/realms/master/clients-registrations/openid-connect"
+      - "{{BaseURL}}/auth/realms/master/clients-registrations/openid-connect"
+
+    headers:
+      Content-Type: application/json
+
+    body: |
+      {"redirect_uris":["https://interact.sh/cb"],"client_name":"recon-probe"}
+
+    stop-at-first-match: true
+    matchers-condition: or
+    matchers:
+      # CRITICAL — open DCR, returned client_id
+      - type: dsl
+        name: open-dcr-confirmed
+        dsl:
+          - 'status_code == 200 || status_code == 201'
+          - 'contains(body, "client_id")'
+          - '!contains(tolower(body), "unauthorized")'
+        condition: and
+
+    extractors:
+      - type: regex
+        name: registered_client_id
+        part: body
+        group: 1
+        regex:
+          - '"client_id"\s*:\s*"([^"]+)"'
+
+      - type: regex
+        name: registered_client_secret
+        part: body
+        group: 1
+        regex:
+          - '"client_secret"\s*:\s*"([^"]+)"'
+
+      - type: regex
+        name: registration_access_token
+        part: body
+        group: 1
+        regex:
+          - '"registration_access_token"\s*:\s*"([^"]+)"'

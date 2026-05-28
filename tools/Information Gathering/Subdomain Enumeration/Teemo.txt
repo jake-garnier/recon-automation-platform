@@ -1,0 +1,10 @@
+Teemo
+=====
+
+URL: https://github.com/bit4woo/teemo
+
+Multi-source subdomain enumeration tool written in Python. Aggregates results from search engines, DNS queries, certificate transparency, and third-party APIs.
+
+Usage: Subdomain enumeration via multiple sources.
+Input: Domain names.
+Output: Discovered subdomains.

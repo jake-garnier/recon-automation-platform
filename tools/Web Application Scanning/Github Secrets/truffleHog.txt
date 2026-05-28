@@ -1,0 +1,13 @@
+truffleHog
+==========
+
+URL: https://github.com/dxa4481/truffleHog
+
+Searches Git repositories for high-entropy strings and secrets. Scans entire commit history for accidentally committed credentials, API keys, and tokens.
+
+Usage: Find secrets in Git repositories.
+Input: Git repository URL.
+Output: Discovered secrets with commit context.
+
+Example:
+  trufflehog git https://github.com/target/repo

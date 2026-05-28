@@ -1,0 +1,10 @@
+ICANN
+=====
+
+URL: https://lookup.icann.org/
+
+Internet Corporation for Assigned Names and Numbers — RDAP/WHOIS lookup for domain registration data. The authoritative source for domain WHOIS.
+
+Usage: Domain registration WHOIS lookup.
+Input: Domain name.
+Output: Registrar, registration dates, nameservers, registrant info.

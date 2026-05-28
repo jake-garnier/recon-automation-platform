@@ -1,0 +1,163 @@
+# SPLIT 2026-05-23: this file now contains TWO templates that previously
+# lived as one. The original template (severity:high) fired on any OIDC
+# discovery doc presence, which produced 22+ FPs in the 2026-05-23 batch
+# triage with zero true positives. See [[feedback_systemic_template_fps_2026-05-23]].
+#
+# Now:
+#   1. oauth-config-exposed (info)  — flags any reachable OIDC discovery doc.
+#                                     Recon signal only.
+#   2. oauth-redirect-uri-bypass (high) — fires only when an authorize endpoint
+#                                         issues a 302 Location: <attacker_host>,
+#                                         which is the actual exploit primitive.
+
+id: oauth-config-exposed
+
+info:
+  name: OIDC / OAuth Discovery Document Reachable
+  author: custom
+  severity: info
+  description: |
+    Detects publicly reachable OpenID Connect or OAuth 2.0 authorization
+    server metadata documents (per RFC 8414 / OIDC Discovery 1.0). The
+    document itself is intended to be public, but it reveals the
+    authorization_endpoint, token_endpoint, grant_types, scopes, and
+    registration_endpoint, which are the inputs for further OAuth attack
+    research (redirect_uri bypass, dynamic client registration abuse).
+  reference:
+    - https://datatracker.ietf.org/doc/rfc9700/
+    - https://portswigger.net/web-security/oauth
+  tags: oauth,oidc,recon,info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/.well-known/openid-configuration"
+      - "{{BaseURL}}/.well-known/oauth-authorization-server"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        words:
+          - "authorization_endpoint"
+          - "token_endpoint"
+        condition: and
+
+    extractors:
+      - type: regex
+        part: body
+        name: authorization_endpoint
+        group: 1
+        regex:
+          - '"authorization_endpoint"\s*:\s*"([^"]+)"'
+
+      - type: regex
+        part: body
+        name: token_endpoint
+        group: 1
+        regex:
+          - '"token_endpoint"\s*:\s*"([^"]+)"'
+
+      - type: regex
+        part: body
+        name: registration_endpoint
+        group: 1
+        regex:
+          - '"registration_endpoint"\s*:\s*"([^"]+)"'
+
+      - type: regex
+        part: body
+        name: grant_types
+        group: 1
+        regex:
+          - '"grant_types_supported"\s*:\s*\[([^\]]+)\]'
+
+---
+
+id: oauth-redirect-uri-bypass
+
+info:
+  name: OAuth redirect_uri Validation Bypass (Confirmed)
+  author: custom
+  severity: high
+  description: |
+    Tests OAuth/OIDC authorize endpoints for redirect_uri validation bypasses
+    by injecting a verifiably attacker-controlled URL and checking whether
+    the authorization server issues a 302 Location: header pointing at it.
+
+    This template only fires on a CONFIRMED bypass — a 302/303 response with
+    a Location header whose authority is attacker-controlled. Probing for
+    the presence of /.well-known/openid-configuration is split out as
+    oauth-config-exposed (info severity).
+
+    Bypass techniques tested:
+      - Basic external redirect
+      - Subdomain wildcard (legit.com → evil.legit.com)
+      - Path traversal (..; / Keycloak quirk per CVE-2026-3872)
+      - @-userinfo authority confusion (https://legit.com@evil.com)
+      - HTTP downgrade (https → http)
+
+    Reference reports:
+      - HackerOne #861940 — Semrush IDN homograph
+      - HackerOne #202781 — Uber FB OAuth token chain
+      - PortSwigger Research: Hidden OAuth Attack Vectors
+      - Detectify: Dirty Dancing in Sign-in OAuth Flows
+      - CVE-2024-8883 — Keycloak vulnerable redirect URI validation
+      - CVE-2026-3872 — Keycloak ..;/ path traversal
+  reference:
+    - https://portswigger.net/research/hidden-oauth-attack-vectors
+    - https://labs.detectify.com/writeups/account-hijacking-using-dirty-dancing-in-sign-in-oauth-flows/
+    - https://blog.doyensec.com/2025/01/30/oauth-common-vulnerabilities.html
+  tags: oauth,redirect,misconfig,ato,high
+
+http:
+  - method: GET
+    path:
+      # Common authorize endpoints. Order matters — Keycloak first since its
+      # ..;/ quirk is the highest-confidence current bypass.
+      - "{{BaseURL}}/realms/master/protocol/openid-connect/auth?response_type=code&client_id=test&redirect_uri=https://{{Hostname}}/..;/@interact.sh/&scope=openid"
+      - "{{BaseURL}}/oauth/authorize?response_type=code&client_id=test&redirect_uri=https://interact.sh/&scope=openid"
+      - "{{BaseURL}}/oauth2/authorize?response_type=code&client_id=test&redirect_uri=https://interact.sh/&scope=openid"
+      - "{{BaseURL}}/oauth2/v1/authorize?response_type=code&client_id=test&redirect_uri=https://interact.sh/&scope=openid"
+      - "{{BaseURL}}/authorize?response_type=code&client_id=test&redirect_uri=https://interact.sh/&scope=openid"
+      - "{{BaseURL}}/connect/authorize?response_type=code&client_id=test&redirect_uri=https://interact.sh/&scope=openid"
+      - "{{BaseURL}}/as/authorization.oauth2?response_type=code&client_id=test&redirect_uri=https://interact.sh/"
+      # Subdomain bypass (target.com → evil.target.com.{{Hostname}})
+      - "{{BaseURL}}/oauth/authorize?response_type=code&client_id=test&redirect_uri=https://evil.{{Hostname}}/&scope=openid"
+      - "{{BaseURL}}/oauth2/authorize?response_type=code&client_id=test&redirect_uri=https://evil.{{Hostname}}/&scope=openid"
+      # @-userinfo bypass
+      - "{{BaseURL}}/oauth/authorize?response_type=code&client_id=test&redirect_uri=https://{{Hostname}}@interact.sh/&scope=openid"
+      - "{{BaseURL}}/oauth2/authorize?response_type=code&client_id=test&redirect_uri=https://{{Hostname}}@interact.sh/&scope=openid"
+
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      # Server must issue a redirect status
+      - type: status
+        status:
+          - 301
+          - 302
+          - 303
+          - 307
+
+      # Location header must point at our attacker host
+      - type: word
+        part: header
+        words:
+          - "Location: https://interact.sh"
+          - "Location: http://interact.sh"
+          - "Location: https://evil."
+          - "location: https://interact.sh"
+        condition: or
+
+    extractors:
+      - type: regex
+        part: header
+        name: bypass_location
+        group: 1
+        regex:
+          - '[Ll]ocation:\s*(https?://[^\s\r\n]+)'

@@ -1,0 +1,13 @@
+Joomscan
+========
+
+URL: https://github.com/rezasp/joomscan
+
+Joomla vulnerability scanner by OWASP. Detects Joomla version, known vulnerabilities, misconfigurations, and installed components.
+
+Usage: Joomla CMS security scanning.
+Input: Target Joomla URL.
+Output: Version, vulnerabilities, components.
+
+Example:
+  perl joomscan.pl -u https://example.com

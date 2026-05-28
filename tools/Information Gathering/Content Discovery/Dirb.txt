@@ -1,0 +1,13 @@
+Dirb
+====
+
+URL: https://tools.kali.org/web-applications/dirb
+
+URL brute-forcer that comes pre-installed on Kali Linux. Scans web servers for existing directories using dictionary-based attacks.
+
+Usage: Simple directory enumeration.
+Input: Target URL + wordlist.
+Output: Found directories with response codes.
+
+Example:
+  dirb https://example.com /usr/share/dirb/wordlists/common.txt

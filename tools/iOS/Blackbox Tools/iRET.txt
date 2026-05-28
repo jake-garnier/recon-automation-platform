@@ -1,0 +1,10 @@
+iRET
+====
+
+URL: https://github.com/S3Jensen/iRET
+
+iOS Reverse Engineering Toolkit. Automates many common tasks for iOS app security assessments on jailbroken devices.
+
+Usage: iOS app reverse engineering and analysis.
+Input: Target app on jailbroken device.
+Output: Binary analysis, plist dumps, keychain data.

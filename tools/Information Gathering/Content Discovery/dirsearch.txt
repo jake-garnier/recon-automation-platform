@@ -1,0 +1,14 @@
+dirsearch
+=========
+
+URL: https://github.com/maurosoria/dirsearch
+
+Web path brute-forcer written in Python. Scans for common directories and files on web servers. Supports extensions, recursive scanning, and multiple wordlist formats.
+
+Usage: Directory and file enumeration on web servers.
+Input: Target URL + wordlist.
+Output: Discovered paths with status codes.
+
+Example:
+  python3 dirsearch.py -u https://example.com
+  python3 dirsearch.py -u https://example.com -e php,html,js -w wordlist.txt

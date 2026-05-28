@@ -1,0 +1,106 @@
+id: open-registration-admin
+
+info:
+  name: Open Registration on Admin/Internal Subdomains
+  author: custom
+  severity: medium
+  description: |
+    Checks if admin, internal, staging, or management subdomains allow
+    self-registration. Open signup on these hosts can grant unauthorized
+    access to internal tooling, admin dashboards, or staging environments
+    with production data access.
+  tags: auth,misconfig,registration,privilege-escalation
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/signup"
+      - "{{BaseURL}}/register"
+      - "{{BaseURL}}/registration"
+      - "{{BaseURL}}/create-account"
+      - "{{BaseURL}}/auth/register"
+      - "{{BaseURL}}/auth/signup"
+      - "{{BaseURL}}/users/sign_up"
+      - "{{BaseURL}}/account/register"
+      - "{{BaseURL}}/api/auth/register"
+      - "{{BaseURL}}/api/v1/auth/register"
+      - "{{BaseURL}}/api/register"
+      - "{{BaseURL}}/api/signup"
+      - "{{BaseURL}}/join"
+      - "{{BaseURL}}/onboarding"
+      - "{{BaseURL}}/invite"
+
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Must look like a registration form
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - '<input[^>]+(?:name|id)="(?:email|username|password|confirm_password|first_name|name|fullname|user\[email\]|user\[password\])"'
+          - '<form[^>]+(?:action|method)[^>]*(?:register|signup|sign_up|create|join)'
+          - '"(?:register|signup|createAccount|create_user)"'
+          - 'Create (?:an? )?(?:Account|account)'
+          - 'Sign [Uu]p'
+          - 'Register'
+
+      # Target must be on an admin/internal-looking subdomain
+      - type: dsl
+        dsl:
+          - 'contains(tolower(Host), "admin") || contains(tolower(Host), "internal") || contains(tolower(Host), "staging") || contains(tolower(Host), "manage") || contains(tolower(Host), "portal") || contains(tolower(Host), "dashboard") || contains(tolower(Host), "console") || contains(tolower(Host), "backoffice") || contains(tolower(Host), "staff") || contains(tolower(Host), "ops") || contains(tolower(Host), "corp") || contains(tolower(Host), "intranet") || contains(tolower(Host), "dev") || contains(tolower(Host), "test") || contains(tolower(Host), "sandbox") || contains(tolower(Host), "beta")'
+
+    extractors:
+      - type: regex
+        name: form_action
+        part: body
+        group: 1
+        regex:
+          - '<form[^>]+action="([^"]+)"'
+---
+id: open-registration-any
+
+info:
+  name: Open Registration Endpoint Detection (Any Host)
+  author: custom
+  severity: info
+  description: |
+    Detects open registration/signup endpoints on any host. While not
+    necessarily a vulnerability on public-facing sites, this surfaces
+    registration endpoints for manual review — particularly useful when
+    the program's scope includes internal applications.
+  tags: auth,recon,registration
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/signup"
+      - "{{BaseURL}}/register"
+      - "{{BaseURL}}/users/sign_up"
+      - "{{BaseURL}}/auth/register"
+      - "{{BaseURL}}/api/auth/register"
+
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - '<input[^>]+(?:name|id)="(?:email|username|password)"'
+          - '<form[^>]+(?:register|signup|sign_up|create)'
+          - 'Create (?:an? )?[Aa]ccount'
+          - 'Sign [Uu]p'
+
+      # Exclude admin-subdomain matches (covered by the other template)
+      - type: dsl
+        dsl:
+          - '!contains(tolower(Host), "admin") && !contains(tolower(Host), "internal") && !contains(tolower(Host), "staging")'

@@ -1,0 +1,14 @@
+dnsrecon
+========
+
+URL: https://github.com/darkoperator/dnsrecon
+
+DNS enumeration tool written in Python. Supports standard DNS enumeration, zone transfers, reverse lookups, brute-force, cache snooping, and more.
+
+Usage: Comprehensive DNS enumeration.
+Input: Target domain.
+Output: DNS records, zone transfer results, brute-force results.
+
+Example:
+  dnsrecon -d example.com
+  dnsrecon -d example.com -t brt -D wordlist.txt

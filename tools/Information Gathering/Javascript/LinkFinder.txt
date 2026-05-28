@@ -1,0 +1,13 @@
+LinkFinder
+==========
+
+URL: https://github.com/GerbenJavado/LinkFinder
+
+Python script that finds endpoints and their parameters in JavaScript files. Uses jsbeautifier and regex to parse JS for URLs and API paths.
+
+Usage: Extract endpoints from JavaScript files.
+Input: URL to a JS file or local JS file.
+Output: Discovered endpoints with parameters.
+
+Example:
+  python3 linkfinder.py -i https://example.com/app.js -o cli

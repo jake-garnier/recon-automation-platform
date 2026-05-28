@@ -1,0 +1,13 @@
+dex2jar
+=======
+
+URL: https://github.com/pxb1988/dex2jar
+
+Tools to convert Android DEX files to Java JAR files. Once converted, JAR can be opened with any Java decompiler (JD-GUI, etc.).
+
+Usage: Convert DEX to JAR for decompilation.
+Input: DEX or APK files.
+Output: JAR files.
+
+Example:
+  d2j-dex2jar.sh app.apk

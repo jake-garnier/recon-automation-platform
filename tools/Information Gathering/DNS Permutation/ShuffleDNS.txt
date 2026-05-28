@@ -1,0 +1,13 @@
+ShuffleDNS
+==========
+
+URL: https://github.com/projectdiscovery/shuffledns
+
+Wrapper around massdns by ProjectDiscovery. Allows DNS brute-forcing using active wildcard filtering and DNS validation. Written in Go.
+
+Usage: DNS brute-forcing and subdomain resolution with wildcard filtering.
+Input: Domain + wordlist or list of subdomains to resolve.
+Output: Valid resolved subdomains.
+
+Example:
+  shuffledns -d example.com -w wordlist.txt -r resolvers.txt

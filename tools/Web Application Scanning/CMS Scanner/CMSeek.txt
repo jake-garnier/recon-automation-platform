@@ -1,0 +1,13 @@
+CMSeek
+======
+
+URL: https://github.com/Tuhinshubhra/CMSeeK
+
+CMS detection and exploitation tool. Detects 180+ CMS types, then runs targeted scans for the detected CMS.
+
+Usage: Detect CMS type and scan for vulnerabilities.
+Input: Target URL.
+Output: CMS type, version, known vulnerabilities.
+
+Example:
+  python3 cmseek.py -u https://example.com

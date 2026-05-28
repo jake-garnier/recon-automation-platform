@@ -1,0 +1,10 @@
+vhostbrute
+==========
+
+URL: https://github.com/allyshka/vhostbrute
+
+Virtual host brute-forcer that discovers additional websites hosted on the same IP by trying different Host headers.
+
+Usage: Brute-force virtual host discovery.
+Input: Target IP + wordlist.
+Output: Discovered virtual hosts.

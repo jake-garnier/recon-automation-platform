@@ -1,0 +1,16 @@
+nmap
+====
+
+URL: https://nmap.org/
+
+The industry-standard network scanner. Port scanning, service/version detection, OS fingerprinting, and NSE scripting engine for vulnerability detection.
+
+Usage: Port scanning, service enumeration, vulnerability detection.
+Input: Target IPs/hostnames, port ranges.
+Output: Open ports, service versions, OS detection, script results.
+
+Example:
+  nmap -sV -sC target.com
+  nmap -iL hosts.txt --top-ports 1000 -oX output.xml
+
+Note: Already integrated in the recon pipeline.

@@ -1,0 +1,14 @@
+WayBackURLs
+===========
+
+URL: https://github.com/tomnomnom/waybackurls
+
+Fetches all URLs that the Wayback Machine knows about for a domain. Simple, fast, single-purpose tool by tomnomnom.
+
+Usage: Fetch archived URLs from the Wayback Machine.
+Input: Domain names (stdin).
+Output: Plain text list of historical URLs.
+
+Example:
+  echo example.com | waybackurls
+  cat domains.txt | waybackurls > urls.txt

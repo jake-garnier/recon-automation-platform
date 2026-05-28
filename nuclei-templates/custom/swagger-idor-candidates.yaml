@@ -1,0 +1,89 @@
+id: swagger-idor-candidates
+
+info:
+  name: Exposed API Documentation with IDOR-Susceptible Endpoints
+  author: custom
+  severity: medium
+  description: |
+    Detects exposed Swagger/OpenAPI specs and extracts endpoints containing
+    path parameters like {id}, {userId}, {orgId}, {accountId} that are
+    prime candidates for Insecure Direct Object Reference (IDOR) testing.
+    Goes beyond detection — parses the spec to surface actionable targets.
+  tags: api,swagger,idor,authz,recon
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/swagger.json"
+      - "{{BaseURL}}/swagger/v1/swagger.json"
+      - "{{BaseURL}}/api/swagger.json"
+      - "{{BaseURL}}/v2/api-docs"
+      - "{{BaseURL}}/v3/api-docs"
+      - "{{BaseURL}}/openapi.json"
+      - "{{BaseURL}}/api/openapi.json"
+      - "{{BaseURL}}/api-docs"
+      - "{{BaseURL}}/api/api-docs"
+      - "{{BaseURL}}/docs/openapi.json"
+      - "{{BaseURL}}/api/v1/openapi.json"
+      - "{{BaseURL}}/api/v2/openapi.json"
+
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        words:
+          - '"paths"'
+          - '"info"'
+        condition: and
+
+      # Must contain parameterized endpoints
+      - type: regex
+        part: body
+        regex:
+          - '\{(id|userId|user_id|orgId|org_id|accountId|account_id|teamId|team_id|projectId|project_id|customerId|customer_id|orderId|order_id|invoiceId|invoice_id|fileId|file_id|documentId|document_id|groupId|group_id|roleId|role_id|tenantId|tenant_id|workspaceId|workspace_id|memberId|member_id|subscriptionId|paymentId|reportId|ticketId|messageId|commentId|postId|itemId)\}'
+
+    extractors:
+      # Extract all parameterized paths (IDOR candidates)
+      - type: regex
+        name: idor_endpoints
+        part: body
+        regex:
+          - '"(/[^"]*\{(?:id|userId|user_id|orgId|org_id|accountId|account_id|teamId|team_id|projectId|project_id|customerId|customer_id|orderId|order_id|invoiceId|invoice_id|fileId|file_id|documentId|document_id|groupId|group_id|roleId|role_id|tenantId|tenant_id|workspaceId|workspace_id|memberId|member_id|subscriptionId|paymentId|reportId|ticketId|messageId|commentId|postId|itemId)\}[^"]*)"'
+        group: 1
+
+      # Extract DELETE endpoints (high-value IDOR)
+      - type: regex
+        name: delete_endpoints
+        part: body
+        regex:
+          - '"delete"\s*:\s*\{[^}]*"(summary|operationId)"\s*:\s*"([^"]+)"'
+        group: 2
+
+      # Extract API base path
+      - type: regex
+        name: base_path
+        part: body
+        group: 1
+        regex:
+          - '"basePath"\s*:\s*"([^"]+)"'
+
+      # Extract API title/version for context
+      - type: regex
+        name: api_title
+        part: body
+        group: 1
+        regex:
+          - '"title"\s*:\s*"([^"]+)"'
+
+      # Extract auth schemes (useful for testing)
+      - type: regex
+        name: auth_scheme
+        part: body
+        group: 1
+        regex:
+          - '"type"\s*:\s*"(apiKey|http|oauth2|openIdConnect)"'

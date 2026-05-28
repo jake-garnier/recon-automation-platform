@@ -1,0 +1,74 @@
+id: http-method-override
+
+info:
+  name: HTTP Method Override Header Accepted on State-Changing Endpoints
+  author: custom
+  severity: medium
+  description: |
+    Symfony, Laravel, Rails-style apps still honor `X-HTTP-Method-Override`,
+    `X-HTTP-Method`, `X-Method-Override`, and the `_method=` body field for
+    legacy form compatibility. When this is enabled on a production API
+    endpoint, an attacker can perform any HTTP method (DELETE, PUT, PATCH)
+    over a method that bypasses CSRF middleware (GET / POST).
+
+    The WAFFLED USENIX 2025 study catalogued 1,207 confirmed bypasses across
+    AWS WAF, Azure WAFv2, Cloud Armor, Cloudflare, ModSecurity via exactly
+    these header tricks — they sit at the parser-discrepancy boundary.
+
+    True positive shape: a GET (or POST without proper CSRF) on a `/users/123`
+    style URL with `X-HTTP-Method-Override: DELETE` returns a 200/204 success
+    response (or a 4xx that indicates the DELETE was actually attempted —
+    e.g. "user not found" rather than "method not allowed").
+
+    Detection logic compares the response code/body of a vanilla GET against
+    the override request. If override produces materially different content
+    (especially 200/204 success or 404 "not found" vs 405 "method not
+    allowed"), the override is being honored.
+  reference:
+    - https://arxiv.org/html/2503.10846v1
+    - https://hacktricks.wiki/en/pentesting-web/proxy-waf-protections-bypass.html
+  tags: csrf,method-override,waf-bypass,medium
+
+http:
+  - method: GET
+    path:
+      # Common stateful resource patterns. We test endpoints that look like
+      # `/users/<id>` `/api/items/<id>` etc. without an actual ID — the
+      # *response differential* between vanilla GET and override-DELETE
+      # is what we're testing.
+      - "{{BaseURL}}/api/users/1"
+      - "{{BaseURL}}/api/v1/users/1"
+      - "{{BaseURL}}/api/sessions/current"
+      - "{{BaseURL}}/users/me"
+      - "{{BaseURL}}/api/items/1"
+
+    headers:
+      X-HTTP-Method-Override: DELETE
+      X-HTTP-Method: DELETE
+      X-Method-Override: DELETE
+
+    stop-at-first-match: false
+    matchers-condition: and
+    matchers:
+      # The endpoint actually exists (got a JSON/structured response, not
+      # a generic 404 page) AND returned a success or delete-shaped error
+      - type: status
+        status:
+          - 200
+          - 202
+          - 204
+          - 404  # "user not found" after attempted delete is also a hit
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+
+      # Must NOT be a 405 method-not-allowed — that means override was rejected
+      - type: word
+        part: body
+        words:
+          - "method not allowed"
+          - "Method Not Allowed"
+        condition: or
+        negative: true

@@ -1,0 +1,10 @@
+certspotter
+===========
+
+URL: https://github.com/SSLMate/certspotter
+
+Certificate Transparency log monitor by SSLMate. Watches CT logs for new certificates and alerts on new discoveries.
+
+Usage: Monitor CT logs for new certificates for your domains.
+Input: Domain names to monitor.
+Output: Alerts on new certificate issuances.

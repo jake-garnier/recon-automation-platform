@@ -1,0 +1,89 @@
+id: graphql-multipart-csrf
+
+info:
+  name: GraphQL CSRF via Multipart Content-Type Bypass
+  author: custom
+  severity: medium
+  description: |
+    Apollo Server / Hot Chocolate / Strapi / Hasura all advertise CSRF
+    prevention based on rejecting "simple" Content-Type requests (i.e.
+    requiring application/json or a custom header that triggers a CORS
+    preflight). Several production deployments bypass this by accepting
+    multipart/form-data with the GraphQL body smuggled in as a form field
+    — the WAF/router parses it as multipart (innocuous) while the GraphQL
+    layer parses it as JSON (executes the query).
+
+    Apollo's own advisory GHSA-9q82-xgwf-vj6h confirms this class.
+    Jitendra Chandel's 2024 Medium post documents an in-the-wild bypass
+    against a post-fix Apollo Server deployment.
+
+    This template tests for the parity break: a multipart-encoded GraphQL
+    mutation that the server actually executes (returns `data` or `errors`
+    with the field structure of a real GraphQL response). Compares against
+    a same-query JSON POST to confirm the multipart path is the bypass.
+
+    True positive shape: multipart request returns a GraphQL-shaped JSON
+    body (contains `"data":` or `"errors":` with `"locations":` or
+    `"path":` fields), AND the response is NOT a CSRF rejection error.
+  reference:
+    - https://github.com/apollographql/apollo-server/security/advisories/GHSA-9q82-xgwf-vj6h
+    - https://www.apollographql.com/docs/graphos/routing/security/csrf
+    - https://medium.com/@_imjitendra_/csrf-in-graphql-how-a-fixed-vulnerability-still-allowed-a-bypass-df1d314b6776
+  tags: graphql,csrf,apollo,bypass,medium
+
+http:
+  - method: POST
+    path:
+      - "{{BaseURL}}/graphql"
+      - "{{BaseURL}}/api/graphql"
+      - "{{BaseURL}}/v1/graphql"
+      - "{{BaseURL}}/query"
+
+    headers:
+      Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryRECON
+
+    body: |
+      ------WebKitFormBoundaryRECON
+      Content-Disposition: form-data; name="operations"
+
+      {"query":"query{__typename}","variables":{}}
+      ------WebKitFormBoundaryRECON--
+
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      # Server actually executed the query (returned a GraphQL-shaped response)
+      - type: word
+        part: body
+        words:
+          - '"data"'
+          - '"__typename"'
+        condition: or
+
+      # NOT a CSRF rejection or generic auth wall — those should fire
+      # different keywords. We allowlist absence of common rejection text.
+      - type: word
+        part: body
+        words:
+          - "CSRF"
+          - "csrf"
+          - "unauthorized"
+          - "Forbidden"
+          - "expected JSON"
+          - "Content-Type must be application/json"
+        condition: or
+        negative: true
+
+      # Server returns JSON (not the multipart-rejected HTML error)
+      - type: word
+        part: header
+        words:
+          - "application/json"
+
+    extractors:
+      - type: regex
+        name: graphql_response_snippet
+        part: body
+        group: 0
+        regex:
+          - '\{"data":[^}]{0,200}'

@@ -1,0 +1,10 @@
+Recon.dev
+=========
+
+URL: https://recon.dev/
+
+Web platform for passive reconnaissance data. Aggregates subdomain data, DNS records, and other recon information. Useful for quickly checking what's publicly known about a target.
+
+Usage: Quick passive recon lookup.
+Input: Domain via web UI.
+Output: Known subdomains, DNS data.

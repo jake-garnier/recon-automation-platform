@@ -1,0 +1,14 @@
+Jadx
+====
+
+URL: https://github.com/skylot/jadx
+
+DEX to Java decompiler. Produces Java source code from Android APK/DEX files. GUI and CLI tools available. Best-in-class Android decompiler.
+
+Usage: Decompile Android apps to readable Java source.
+Input: APK or DEX files.
+Output: Java source code.
+
+Example:
+  jadx app.apk -d output/
+  jadx-gui app.apk

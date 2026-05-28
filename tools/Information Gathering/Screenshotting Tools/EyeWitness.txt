@@ -1,0 +1,13 @@
+EyeWitness
+==========
+
+URL: https://github.com/FortyNorthSecurity/EyeWitness
+
+Takes screenshots of web pages, RDP services, and VNC servers. Generates a report with screenshots sorted by similarity. Identifies default credentials and known web apps.
+
+Usage: Visual reconnaissance with automated categorization.
+Input: List of URLs or nmap/nessus XML.
+Output: HTML report with categorized screenshots.
+
+Example:
+  python3 EyeWitness.py -f urls.txt --web

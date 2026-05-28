@@ -1,0 +1,23 @@
+Burpsuite Professional
+======================
+
+URL: https://portswigger.net/burp/pro
+
+The industry-standard web application security testing platform. Intercepting proxy, scanner, intruder, repeater, and extensive extension ecosystem.
+
+Key Extensions:
+  - Additional Scanner Checks: Extra vulnerability checks
+  - AWS-Extender: AWS service testing
+  - Swagger Parser: Import and test Swagger/OpenAPI definitions
+  - WSDLER: WSDL parsing for SOAP testing
+  - J2EEScan: Java EE vulnerability scanning
+  - JSON Beautifier: Pretty-print JSON responses
+  - Active Scan++: Enhanced active scanning
+  - Turbo Intruder: High-speed HTTP request engine
+  - Authorize: IDOR/authorization testing
+
+Usage: Full web application security testing.
+Input: Target URL via proxy.
+Output: Vulnerability findings, request/response analysis.
+
+Note: Commercial software. Community Edition available with limited features.

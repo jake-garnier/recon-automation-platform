@@ -1,0 +1,10 @@
+teh_s3_bucketeers
+=================
+
+URL: https://github.com/tomdev/teh_s3_bucketeers
+
+Simple S3 bucket discovery tool. Tests for existence and accessibility of S3 buckets.
+
+Usage: Quick S3 bucket enumeration.
+Input: Bucket name candidates.
+Output: Bucket existence and access status.

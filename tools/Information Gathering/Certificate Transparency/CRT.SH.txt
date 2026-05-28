@@ -1,0 +1,13 @@
+CRT.SH
+======
+
+URL: https://crt.sh/
+
+Free web interface to search certificate transparency logs. Find all SSL/TLS certificates issued for a domain, revealing subdomains.
+
+Usage: Discover subdomains via CT log certificates.
+Input: Domain name via web UI or API.
+Output: Certificates and associated domain names.
+
+API Example:
+  curl 'https://crt.sh/?q=%.example.com&output=json'

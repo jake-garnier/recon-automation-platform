@@ -1,0 +1,14 @@
+gitleaks
+========
+
+URL: https://github.com/zricethezav/gitleaks
+
+SAST tool for detecting hardcoded secrets in Git repos. Scans commits, branches, and tags. Supports custom rules and pre-commit hooks.
+
+Usage: Scan repos for hardcoded secrets and credentials.
+Input: Git repository path or URL.
+Output: Detected secrets with location and type.
+
+Example:
+  gitleaks detect -s /path/to/repo
+  gitleaks detect --repo-url https://github.com/target/repo

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}{{ report['title'][:60] }} — Hacktivity{% endblock %}
+
+{% block extra_head %}
+<style>
+    .report-meta { display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.5rem; }
+    .sev-bar { display: inline-block; padding: 0.2em 0.6em; border-radius: 4px; font-size: 0.85em; font-weight: 600; }
+    .sev-bar.critical { background: var(--sev-critical); color: #fff; }
+    .sev-bar.high { background: var(--sev-high); color: #fff; }
+    .sev-bar.medium { background: var(--sev-medium); color: #000; }
+    .sev-bar.low { background: var(--sev-low); color: #000; }
+    .bounty-big { color: #2ecc40; font-weight: 700; font-size: 1.2em; }
+    .tag { display: inline-block; padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.75em; background: var(--pico-muted-border-color); margin: 0.1em; }
+    .cat-badge { display: inline-block; padding: 0.2em 0.6em; border-radius: 4px; font-size: 0.85em; background: var(--pico-primary); color: #fff; font-weight: 600; }
+    .analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 768px) { .analysis-grid { grid-template-columns: 1fr; } }
+    .analysis-card { padding: 1rem; border-radius: 6px; background: var(--pico-card-background-color); border: 1px solid var(--pico-muted-border-color); }
+    .analysis-card h4 { margin-bottom: 0.5rem; opacity: 0.7; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; }
+    .analysis-card p { margin-bottom: 0; }
+    .vuln-body { white-space: pre-wrap; font-family: monospace; font-size: 0.85em; padding: 1rem; border-radius: 6px; background: var(--pico-card-background-color); border: 1px solid var(--pico-muted-border-color); max-height: 500px; overflow-y: auto; }
+    .back-link { margin-bottom: 1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<p class="back-link"><a href="/hacktivity/reports">&larr; Back to reports</a></p>
+
+<h2>{{ report['title'] }}</h2>
+
+<div class="report-meta">
+    <span class="sev-bar {{ report['severity_rating'] or '' }}">
+        {{ (report['severity_rating'] or 'unknown')|upper }}
+        {% if report['severity_score'] %} ({{ report['severity_score'] }}){% endif %}
+    </span>
+    {% if report['bounty_amount'] %}
+    <span class="bounty-big">${{ "{:,.0f}".format(report['bounty_amount']) }}</span>
+    {% endif %}
+    <span>
+        <strong>Program:</strong>
+        <a href="/hacktivity/reports?q={{ report['team_handle'] }}">{{ report['team_name'] or report['team_handle'] or '?' }}</a>
+    </span>
+    {% if report['reporter_username'] %}
+    <span><strong>Reporter:</strong> {{ report['reporter_username'] }}</span>
+    {% endif %}
+</div>
+
+<table>
+    <tbody>
+        <tr><td><strong>Report ID</strong></td><td><a href="{{ report['url'] or 'https://hackerone.com/reports/' + report['id'] }}" target="_blank">#{{ report['id'] }}</a></td></tr>
+        <tr><td><strong>Status</strong></td><td>{{ report['substate'] or '?' }}</td></tr>
+        <tr><td><strong>CWE</strong></td><td>{{ report['cwe'] or '—' }}</td></tr>
+        <tr><td><strong>Weakness</strong></td><td>{{ report['weakness_name'] or '—' }}</td></tr>
+        <tr><td><strong>Disclosed</strong></td><td>{{ report['disclosed_at'][:10] if report['disclosed_at'] else '?' }}</td></tr>
+        <tr><td><strong>Created</strong></td><td>{{ report['created_at'][:10] if report['created_at'] else '?' }}</td></tr>
+    </tbody>
+</table>
+
+{% if report['vulnerability_information'] %}
+<h3>Vulnerability Details</h3>
+<div class="vuln-body">{{ report['vulnerability_information'] }}</div>
+{% endif %}
+
+<hr>
+
+{% if report['analyzed_at'] %}
+<h3>Claude Analysis</h3>
+<div class="report-meta">
+    <span class="cat-badge">{{ category_labels.get(report['category'], report['category']) }}</span>
+    <span class="muted">Analyzed {{ report['analyzed_at'][:10] }}</span>
+    {% if report['complexity'] %}
+    <span><strong>Complexity:</strong> {{ report['complexity'] }}</span>
+    {% endif %}
+</div>
+
+{% if tags %}
+<p>
+    {% for t in tags %}
+    <span class="tag">{{ t }}</span>
+    {% endfor %}
+</p>
+{% endif %}
+
+<div class="analysis-grid">
+    {% if report['summary'] %}
+    <div class="analysis-card">
+        <h4>Summary</h4>
+        <p>{{ report['summary'] }}</p>
+    </div>
+    {% endif %}
+    {% if report['attack_vector'] %}
+    <div class="analysis-card">
+        <h4>Attack Vector</h4>
+        <p>{{ report['attack_vector'] }}</p>
+    </div>
+    {% endif %}
+    {% if report['impact'] %}
+    <div class="analysis-card">
+        <h4>Impact</h4>
+        <p>{{ report['impact'] }}</p>
+    </div>
+    {% endif %}
+    {% if report['takeaways'] %}
+    <div class="analysis-card" style="grid-column: 1 / -1;">
+        <h4>Takeaways for Our Recon</h4>
+        <p>{{ report['takeaways'] }}</p>
+    </div>
+    {% endif %}
+</div>
+
+{% else %}
+<article>
+    <h3>Not Yet Analyzed</h3>
+    <p>This report hasn't been reviewed by Claude yet. Run analysis:</p>
+    <pre><code>python3 ingest_hacktivity.py --analyze --batch 20</code></pre>
+</article>
+{% endif %}
+{% endblock %}

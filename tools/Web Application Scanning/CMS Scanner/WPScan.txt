@@ -1,0 +1,14 @@
+WPScan
+======
+
+URL: https://github.com/wpscanteam/wpscan
+
+WordPress security scanner. Enumerates WordPress version, plugins, themes, users, and known vulnerabilities. Uses WPVulnDB for vulnerability data.
+
+Usage: WordPress security assessment.
+Input: Target WordPress URL.
+Output: Version, plugins, themes, users, vulnerabilities.
+
+Example:
+  wpscan --url https://example.com
+  wpscan --url https://example.com -e vp,vt,u

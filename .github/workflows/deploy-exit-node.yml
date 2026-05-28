@@ -1,0 +1,114 @@
+name: Deploy Hetzner Exit Node
+
+# Deploys the Hetzner CPX21 exit node (recon-egress-ash) configuration.
+# Updates traffic-server.py / traffic-server.service / cloud-init.yaml
+# on the running VPS via Tailscale.  Does NOT provision the VPS — that's
+# manual (see hetzner-exit-node/README.md).
+#
+# Trigger: push to main with changes under hetzner-exit-node/, or manual.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'hetzner-exit-node/**'
+      - '.github/workflows/deploy-exit-node.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    # The Kali self-hosted runner is on the same tailnet as the exit node
+    # (kali → <KALI_TS_IP>, recon-egress-ash → <EXIT_NODE_TS_IP>).  Tailscale
+    # SSH handles auth — no keys needed.
+    env:
+      EXIT_NODE_TS_IP: <EXIT_NODE_TS_IP>
+      EXIT_NODE_HOSTNAME: recon-egress-ash
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Verify exit node reachable
+        run: |
+          if ! ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
+                   -o UserKnownHostsFile=/dev/null \
+                   root@${EXIT_NODE_TS_IP} 'echo ok'; then
+            echo "::error::Cannot reach exit node at ${EXIT_NODE_TS_IP} via Tailscale SSH"
+            exit 1
+          fi
+
+      - name: Hash files before deploy
+        id: hash_before
+        run: |
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+              root@${EXIT_NODE_TS_IP} \
+              'md5sum /opt/traffic-server.py /etc/systemd/system/traffic-server.service 2>/dev/null || true' \
+              > /tmp/exit-node-hash-before.txt
+          cat /tmp/exit-node-hash-before.txt
+
+      - name: Sync exit-node files
+        run: |
+          # Use rsync over SSH.  Tailscale SSH wraps the connection.
+          rsync -av --no-owner --no-group \
+            -e 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null' \
+            hetzner-exit-node/traffic-server.py \
+            root@${EXIT_NODE_TS_IP}:/opt/traffic-server.py
+          rsync -av --no-owner --no-group \
+            -e 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null' \
+            hetzner-exit-node/traffic-server.service \
+            root@${EXIT_NODE_TS_IP}:/etc/systemd/system/traffic-server.service
+
+      - name: Restart traffic-server if changed
+        run: |
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+              root@${EXIT_NODE_TS_IP} 'bash -s' <<'REMOTE'
+          set -e
+          chmod 0755 /opt/traffic-server.py
+          # Hash after
+          NEW=$(md5sum /opt/traffic-server.py /etc/systemd/system/traffic-server.service | awk '{print $1}' | sort | tr -d '\n')
+          PREV_FILE=/var/lib/traffic-server.md5
+          OLD=$(cat $PREV_FILE 2>/dev/null || echo "")
+          if [ "$NEW" != "$OLD" ]; then
+            echo "Service files changed — restarting traffic-server"
+            systemctl daemon-reload
+            systemctl restart traffic-server.service
+            echo "$NEW" > $PREV_FILE
+          else
+            echo "Service files unchanged — no restart"
+          fi
+          REMOTE
+
+      - name: Health check
+        run: |
+          # Verify the traffic-server endpoint responds
+          sleep 3
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+              root@${EXIT_NODE_TS_IP} \
+              'curl -sS --max-time 5 http://<EXIT_NODE_TS_IP>:9090/health' \
+              | grep -q '"ok": true' || {
+            echo "::error::traffic-server health check failed"
+            exit 1
+          }
+          echo "traffic-server is healthy"
+
+      - name: Verify Tailscale exit-node still advertising
+        run: |
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+              root@${EXIT_NODE_TS_IP} \
+              'tailscale status --json' \
+              | python3 -c '
+          import json, sys
+          d = json.load(sys.stdin)
+          self_node = d.get("Self", {})
+          tags = self_node.get("Tags", [])
+          if "tag:exit" not in tags:
+              print("::error::exit node missing tag:exit"); sys.exit(1)
+          print("Tailscale state: tagged as exit, online=%s" % self_node.get("Online"))
+          '
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "Exit node ${EXIT_NODE_HOSTNAME} (${EXIT_NODE_TS_IP}) deploy result: ${{ job.status }}"

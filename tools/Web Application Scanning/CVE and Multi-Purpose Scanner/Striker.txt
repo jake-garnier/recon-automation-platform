@@ -1,0 +1,10 @@
+Striker
+=======
+
+URL: https://github.com/s0md3v/Striker
+
+Offensive web application information and vulnerability scanner. Performs reconnaissance and vulnerability checks in one tool.
+
+Usage: Automated web app recon and vulnerability scanning.
+Input: Target URL.
+Output: Discovered vulnerabilities and information.

@@ -1,0 +1,10 @@
+Virustotal_subdomain_enum
+=========================
+
+URL: https://github.com/appsecco/the-art-of-subdomain-enumeration
+
+Script from 'The Art of Subdomain Enumeration' collection. Uses the VirusTotal API to enumerate subdomains for a given domain.
+
+Usage: Subdomain enumeration via VirusTotal.
+Input: Domain name.
+Output: Subdomains known to VirusTotal.

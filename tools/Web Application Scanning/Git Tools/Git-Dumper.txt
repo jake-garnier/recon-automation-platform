@@ -1,0 +1,13 @@
+Git-Dumper
+==========
+
+URL: https://github.com/arthaud/git-dumper
+
+Tool to dump a Git repository from a website when .git directory is exposed. Reconstructs the full repo from the exposed .git files.
+
+Usage: Download exposed .git directories from web servers.
+Input: URL with exposed .git directory.
+Output: Reconstructed Git repository.
+
+Example:
+  git-dumper https://example.com/.git output/

@@ -1,0 +1,10 @@
+autoSubTakeover
+===============
+
+URL: https://github.com/JordyZomer/autoSubTakeover
+
+Automated subdomain takeover detection tool. Checks if subdomains are pointing to services that can be claimed.
+
+Usage: Automated takeover detection.
+Input: List of subdomains.
+Output: Takeover candidates.

@@ -1,0 +1,10 @@
+subbrute
+========
+
+URL: https://github.com/TheRook/subbrute
+
+DNS meta-query spider that enumerates DNS records and subdomains via brute force. Uses open resolvers to circumvent DNS rate-limiting. Integrates well with other tools like Amass.
+
+Usage: Subdomain brute force enumeration.
+Input: Target domain + wordlist.
+Output: Discovered subdomains.

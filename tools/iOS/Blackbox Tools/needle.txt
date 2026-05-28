@@ -1,0 +1,10 @@
+needle
+======
+
+URL: https://github.com/FSecureLABS/needle
+
+iOS security testing framework by F-Secure. Modular framework for iOS app assessment — binary analysis, data storage, network, and more.
+
+Usage: Comprehensive iOS app security testing.
+Input: Target app on jailbroken device.
+Output: Security findings organized by module.

@@ -1,0 +1,10 @@
+ARIN
+====
+
+URL: https://whois.arin.net/ui/
+
+American Registry for Internet Numbers — WHOIS lookup service. Covers IP address allocations and ASN assignments for North America.
+
+Usage: Look up IP address ownership, netblocks, and ASN information for North American IPs.
+Input: IP address, ASN, or organization name via web UI.
+Output: Organization, network range, contact info.

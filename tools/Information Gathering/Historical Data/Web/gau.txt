@@ -1,0 +1,17 @@
+gau
+===
+
+URL: https://github.com/lc/gau
+
+GetAllURLs — fetches known URLs for a domain from the Wayback Machine, Common Crawl, OTX (AlienVault), and URLScan. Written in Go.
+
+Usage: Discover historical and archived URLs for a domain.
+Input: Domain names (stdin or argument).
+Output: Plain text list of URLs.
+
+Example:
+  echo example.com | gau
+  gau example.com -o urls.txt
+  gau -subs example.com
+
+Note: Already integrated in the recon pipeline as 'getallurls'.

@@ -1,0 +1,13 @@
+webscreenshot
+=============
+
+URL: https://github.com/maaaaz/webscreenshot
+
+Takes screenshots of web pages. Supports multiple rendering engines (PhantomJS, Chrome headless). Useful for visually triaging large lists of discovered hosts.
+
+Usage: Bulk screenshot web pages for visual reconnaissance.
+Input: List of URLs.
+Output: Screenshot images.
+
+Example:
+  python3 webscreenshot.py -i urls.txt -o screenshots/

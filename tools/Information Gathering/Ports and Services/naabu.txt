@@ -1,0 +1,14 @@
+naabu
+=====
+
+URL: https://github.com/projectdiscovery/naabu
+
+Fast port scanner by ProjectDiscovery written in Go. Designed for reliability and simplicity. Supports SYN/CONNECT scans and integrates with other ProjectDiscovery tools.
+
+Usage: Quick port scanning, often as a precursor to service detection.
+Input: Hosts (stdin, file, or CIDR).
+Output: Host:port pairs.
+
+Example:
+  naabu -host example.com
+  naabu -list hosts.txt -top-ports 100

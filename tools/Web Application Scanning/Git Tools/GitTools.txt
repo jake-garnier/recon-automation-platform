@@ -1,0 +1,10 @@
+GitTools
+========
+
+URL: https://github.com/internetwache/GitTools
+
+Collection of three tools for exploiting exposed .git repositories: Dumper (download .git), Extractor (extract commits), Finder (search for .git dirs).
+
+Usage: Find, dump, and extract exposed Git repositories.
+Input: Target URL or URL list.
+Output: Extracted repository contents and commit history.

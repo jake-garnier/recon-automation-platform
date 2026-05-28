@@ -1,0 +1,10 @@
+AWSBucketDump
+=============
+
+URL: https://github.com/jordanpotti/AWSBucketDump
+
+Tool to quickly enumerate and search for interesting files in AWS S3 buckets. Downloads and searches bucket contents for sensitive data.
+
+Usage: Search S3 buckets for sensitive files.
+Input: Bucket names or domain names.
+Output: Interesting files found in accessible buckets.

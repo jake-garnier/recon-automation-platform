@@ -1,0 +1,10 @@
+HostileSubBruteforcer
+=====================
+
+URL: https://github.com/nahamsec/HostileSubBruteforcer
+
+Tool by nahamsec for discovering subdomains vulnerable to takeover. Brute-forces subdomains and checks for takeover conditions.
+
+Usage: Subdomain discovery + takeover checking.
+Input: Target domain.
+Output: Vulnerable subdomains.

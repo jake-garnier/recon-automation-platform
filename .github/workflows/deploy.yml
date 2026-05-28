@@ -1,0 +1,213 @@
+name: Deploy HackerOne Bounty Browser
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Ensure rsync is installed
+        run: |
+          which rsync || sudo apt-get install -y rsync
+
+      - name: Capture pre-rsync recon_agent hash
+        id: agent_hash
+        run: |
+          # Capture the currently-running recon_agent.py hash BEFORE rsync
+          # overwrites it, so we can compare with the new hash and decide
+          # whether to restart the systemd service.
+          if [ -f /home/kali/apps/hackerOne/src/daemons/recon_agent.py ]; then
+            PRE_HASH=$(sudo md5sum /home/kali/apps/hackerOne/src/daemons/recon_agent.py | cut -d' ' -f1)
+          else
+            PRE_HASH="none"
+          fi
+          echo "pre_hash=$PRE_HASH" >> $GITHUB_OUTPUT
+          echo "Captured pre-rsync agent hash: $PRE_HASH"
+
+      - name: Sync code to apps directory
+        run: |
+          mkdir -p ~/apps/hackerOne
+          rsync -av --delete \
+            --exclude='.env' \
+            --exclude='*.db' \
+            --exclude='*.pyc' \
+            --exclude='__pycache__/' \
+            --exclude='.git/' \
+            --exclude='.venv/' \
+            ./ ~/apps/hackerOne/
+
+          echo "Code synced to ~/apps/hackerOne/"
+
+      - name: Create .env file from secrets
+        run: |
+          cd ~/apps/hackerOne
+          cat > .env << EOF
+          H1_API_USERNAME=${{ secrets.H1_API_USERNAME }}
+          H1_API_TOKEN=${{ secrets.H1_API_TOKEN }}
+          EOF
+          echo ".env created"
+
+      - name: Build and deploy containers
+        run: |
+          cd ~/apps/hackerOne
+          docker compose --env-file .env up -d --build
+
+      - name: Bootstrap Playwright + pyrage + age key (idempotent)
+        run: |
+          set -e
+
+          # ---- Playwright (xhr-capture) ----
+          # Kali's APT `python3-playwright` is broken (missing Node driver at
+          # /usr/share/nodejs/playwright/cli.js). The pip-installed version
+          # bundles its own driver, so we use that. Uninstall APT first if
+          # present so the right driver gets picked up.
+          if dpkg -l 2>/dev/null | grep -q "^ii  python3-playwright "; then
+            echo "Removing broken APT python3-playwright (missing Node driver)..."
+            sudo apt-get remove -y python3-playwright
+          fi
+
+          # Check pip-installed Playwright works (has the driver bundled)
+          # by trying the CLI. The bare `import playwright` succeeds even
+          # when broken, so we must actually invoke the CLI.
+          if python3 -m playwright --version >/dev/null 2>&1; then
+            echo "Playwright (pip) already installed and working"
+          else
+            echo "Installing Playwright via pip..."
+            python3 -m pip install --user --break-system-packages playwright
+          fi
+
+          # System Chromium at /usr/bin/chromium is sufficient — xhr_capture.py
+          # is invoked with --executable-path /usr/bin/chromium so we don't
+          # need the Playwright-bundled Chromium download (which is ~280 MB
+          # and can fail behind netns egress).
+          if [ ! -x /usr/bin/chromium ]; then
+            echo "ERROR: /usr/bin/chromium not found — install via apt"
+            sudo apt-get install -y chromium
+          fi
+          /usr/bin/chromium --version | head -1
+
+          # ---- pyrage (credential_store.py) ----
+          if python3 -c "import pyrage; pyrage.x25519.Identity.generate()" 2>/dev/null; then
+            echo "pyrage already installed and functional"
+          else
+            echo "Installing pyrage..."
+            python3 -m pip install --user --break-system-packages 'pyrage>=1.3.0'
+          fi
+
+          # ---- age identity bootstrap ----
+          if [ -f /home/kali/.age/key.txt ]; then
+            echo "age identity already exists at /home/kali/.age/key.txt"
+          else
+            echo "Bootstrapping age identity at /home/kali/.age/key.txt..."
+            mkdir -p /home/kali/.age
+            chmod 700 /home/kali/.age
+            cd /home/kali/apps/hackerOne && PYTHONPATH=src python3 -m app.credential_store bootstrap
+            echo ""
+            echo "  ⚠️  BACK UP /home/kali/.age/key.txt — losing it makes every"
+            echo "      stored credential unrecoverable. Copy it to your password"
+            echo "      manager or Tailscale-encrypted backup before adding"
+            echo "      production credentials."
+            echo ""
+          fi
+
+          # ---- Sanity checks ----
+          if [ ! -f /home/kali/apps/hackerOne/scripts/xhr_capture.py ]; then
+            echo "WARNING: scripts/xhr_capture.py not deployed — xhr-capture will fail"
+          fi
+          if [ ! -f /home/kali/apps/hackerOne/src/app/credential_store.py ]; then
+            echo "WARNING: src/app/credential_store.py not deployed"
+          fi
+          echo "Bootstrap complete."
+
+      - name: Deploy recon agent (host service)
+        run: |
+          cd ~/apps/hackerOne
+          sudo cp recon-agent.service /etc/systemd/system/recon-agent.service
+          sudo cp autopilot.service /etc/systemd/system/autopilot.service
+          sudo cp oracle_autopilot.service /etc/systemd/system/oracle_autopilot.service
+          sudo cp caido.service /etc/systemd/system/caido.service
+          sudo systemctl daemon-reload
+          sudo systemctl enable recon-agent
+          sudo systemctl enable caido
+          # Disable old timer if present, autopilot is now a continuous service
+          sudo systemctl disable autopilot.timer 2>/dev/null || true
+          sudo systemctl stop autopilot.timer 2>/dev/null || true
+
+          # Web autopilot is intentionally NOT enabled/restarted by deploys anymore.
+          # Manual web pipelines are user-initiated only.
+          # To re-enable manually: sudo systemctl enable --now autopilot
+          echo "Web autopilot intentionally left as-is (enable manually if needed)"
+
+          # Oracle autopilot — disabled. Was auto-enabled by deploys but
+          # oracle pipeline review is complete. Re-enable manually if needed:
+          # sudo systemctl enable --now oracle_autopilot
+          echo "Oracle autopilot intentionally left as-is (disabled)"
+
+          # Compare pre-rsync agent hash (captured before rsync) with the new
+          # file's hash to decide whether to restart the systemd service.
+          # Bug fix: the old compare ran AFTER rsync so RUNNING_HASH always
+          # equalled DEPLOYED_HASH → agent was never restarted on code changes.
+          PRE_HASH="${{ steps.agent_hash.outputs.pre_hash }}"
+          DEPLOYED_HASH=$(md5sum /home/kali/apps/hackerOne/src/daemons/recon_agent.py | cut -d' ' -f1)
+          echo "Pre-rsync hash:  $PRE_HASH"
+          echo "Post-rsync hash: $DEPLOYED_HASH"
+          if [ "$PRE_HASH" != "$DEPLOYED_HASH" ]; then
+            # Wait for active scans to finish (max 2 min) before restarting
+            echo "recon_agent.py changed — waiting for active scans to drain..."
+            for i in $(seq 1 24); do
+              ACTIVE=$(curl -s http://127.0.0.1:5001/health 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin).get('scans_running',0))" 2>/dev/null || echo "0")
+              if [ "$ACTIVE" = "0" ]; then
+                echo "No active scans, restarting agent"
+                break
+              fi
+              echo "  $ACTIVE scans still running, waiting 5s... ($i/24)"
+              sleep 5
+            done
+            sudo systemctl restart recon-agent
+            echo "Recon agent restarted"
+          else
+            echo "recon_agent.py unchanged, skipping agent restart"
+          fi
+
+          # Start Caido if not already running (don't restart — preserves active proxy sessions)
+          if ! systemctl is-active --quiet caido; then
+            sudo systemctl start caido
+            echo "Caido started"
+          else
+            echo "Caido already running, skipping restart"
+          fi
+
+      - name: Wait for service to be healthy
+        run: |
+          echo "Waiting for service to start..."
+          sleep 15
+
+          for i in {1..10}; do
+            if curl -s http://localhost:5000/ | grep -q "H1 Bounty Browser"; then
+              echo "Web dashboard is healthy"
+              break
+            fi
+            echo "Waiting for web dashboard... (attempt $i)"
+            sleep 5
+          done
+
+      - name: Show deployment status
+        run: |
+          cd ~/apps/hackerOne
+          echo "=== Container Status ==="
+          docker compose ps
+
+          echo ""
+          echo "=== Health Check ==="
+          curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:5000/ || echo "Not responding"
+
+          echo ""
+          echo "=== Recent Logs ==="
+          docker compose logs --tail=20 web

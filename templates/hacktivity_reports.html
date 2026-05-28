@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Hacktivity Reports — H1 Bounty Browser{% endblock %}
+
+{% block extra_head %}
+<style>
+    .sev-bar { display: inline-block; padding: 0.15em 0.5em; border-radius: 3px; font-size: 0.75em; font-weight: 600; }
+    .sev-bar.critical { background: var(--sev-critical); color: #fff; }
+    .sev-bar.high { background: var(--sev-high); color: #fff; }
+    .sev-bar.medium { background: var(--sev-medium); color: #000; }
+    .sev-bar.low { background: var(--sev-low); color: #000; }
+    .bounty { color: #2ecc40; font-weight: 600; }
+    .cat-badge { display: inline-block; padding: 0.1em 0.45em; border-radius: 3px; font-size: 0.75em; background: var(--pico-primary); color: #fff; }
+    .unanalyzed { opacity: 0.5; font-style: italic; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Hacktivity Reports</h1>
+
+<form method="GET" action="/hacktivity/reports" class="filter-bar">
+    <label>
+        Search
+        <input type="text" name="q" value="{{ q }}" placeholder="Search title, program...">
+    </label>
+    <label>
+        Severity
+        <select name="severity">
+            <option value="all" {{ 'selected' if severity == 'all' }}>All</option>
+            {% for s in all_severities %}
+            <option value="{{ s }}" {{ 'selected' if severity == s }}>{{ s|capitalize }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>
+        Category
+        <select name="category">
+            <option value="all" {{ 'selected' if category == 'all' }}>All</option>
+            {% for c in all_categories %}
+            <option value="{{ c }}" {{ 'selected' if category == c }}>{{ category_labels.get(c, c) }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>
+        Analyzed
+        <select name="analyzed">
+            <option value="all" {{ 'selected' if analyzed == 'all' }}>All</option>
+            <option value="yes" {{ 'selected' if analyzed == 'yes' }}>Analyzed</option>
+            <option value="no" {{ 'selected' if analyzed == 'no' }}>Not Analyzed</option>
+        </select>
+    </label>
+    <button type="submit">Filter</button>
+</form>
+
+<p class="muted">
+    Showing {{ ((page - 1) * 50) + 1 }}–{{ [page * 50, total]|min }} of {{ total }} reports
+</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Report</th>
+            <th>Program</th>
+            <th>Severity</th>
+            <th>Category</th>
+            <th style="text-align:right">Bounty</th>
+            <th>Disclosed</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for r in reports %}
+        <tr>
+            <td><a href="/hacktivity/reports/{{ r['id'] }}">{{ r['title'][:65] }}{% if r['title']|length > 65 %}...{% endif %}</a></td>
+            <td class="mono">{{ r['team_handle'] or '?' }}</td>
+            <td><span class="sev-bar {{ r['severity_rating'] or '' }}">{{ (r['severity_rating'] or '?')|upper }}</span></td>
+            <td>
+                {% if r['category'] %}
+                <span class="cat-badge">{{ category_labels.get(r['category'], r['category']) }}</span>
+                {% else %}
+                <span class="unanalyzed">pending</span>
+                {% endif %}
+            </td>
+            <td style="text-align:right">
+                {% if r['bounty_amount'] %}<span class="bounty">${{ "{:,.0f}".format(r['bounty_amount']) }}</span>{% else %}&mdash;{% endif %}
+            </td>
+            <td class="muted">{{ r['disclosed_at'][:10] if r['disclosed_at'] else '?' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">No reports found.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="/hacktivity/reports?q={{ q }}&severity={{ severity }}&category={{ category }}&analyzed={{ analyzed }}&page={{ page - 1 }}" role="button" class="outline">Previous</a>
+    {% endif %}
+    <span class="muted">Page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}
+    <a href="/hacktivity/reports?q={{ q }}&severity={{ severity }}&category={{ category }}&analyzed={{ analyzed }}&page={{ page + 1 }}" role="button" class="outline">Next</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

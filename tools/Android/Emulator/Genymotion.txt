@@ -1,0 +1,10 @@
+Genymotion
+==========
+
+URL: https://www.genymotion.com/
+
+Fast Android emulator built on VirtualBox. Supports multiple Android versions and device profiles. Popular for testing due to speed and reliability.
+
+Usage: Fast Android emulation for app testing.
+Input: APK files.
+Output: Emulated Android device.

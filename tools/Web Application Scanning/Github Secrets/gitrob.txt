@@ -1,0 +1,10 @@
+gitrob
+======
+
+URL: https://github.com/michenriksen/gitrob
+
+GitHub organization reconnaissance tool. Finds potentially sensitive files pushed to public repositories in an organization.
+
+Usage: Scan GitHub org repos for sensitive files.
+Input: GitHub organization name.
+Output: Interesting files with sensitivity ratings.

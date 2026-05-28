@@ -1,0 +1,12 @@
+Hopper
+======
+
+URL: https://www.hopperapp.com/
+
+macOS/Linux disassembler and decompiler. Supports x86, x86_64, ARM, and ARM64. Good UI for analyzing macOS and iOS binaries.
+
+Usage: Binary reverse engineering focused on macOS/iOS.
+Input: Mach-O, ELF, PE binaries.
+Output: Disassembly, pseudo-code, control flow graphs.
+
+Note: Commercial software with free demo mode.

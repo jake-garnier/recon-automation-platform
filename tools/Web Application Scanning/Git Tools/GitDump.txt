@@ -1,0 +1,10 @@
+GitDump
+=======
+
+URL: https://github.com/Ebryx/GitDump
+
+Tool to dump exposed .git directories from web servers. Downloads and reconstructs the repository contents.
+
+Usage: Download exposed .git directories.
+Input: Target URL with .git exposed.
+Output: Reconstructed repository.

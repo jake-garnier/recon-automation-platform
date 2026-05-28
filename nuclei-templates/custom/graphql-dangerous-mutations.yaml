@@ -1,0 +1,69 @@
+id: graphql-dangerous-mutations
+
+info:
+  name: GraphQL Dangerous Mutation Exposure
+  author: custom
+  severity: medium
+  description: |
+    Sends a full introspection query to GraphQL endpoints, parses the schema,
+    and extracts mutation names that indicate sensitive operations (user deletion,
+    role changes, admin creation, password resets). These are high-priority
+    IDOR and broken access control candidates.
+  tags: graphql,idor,authz,api
+
+http:
+  - raw:
+      - |
+        POST {{Path}} HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+
+        {"query":"{ __schema { mutationType { name fields { name args { name type { name kind ofType { name } } } } } } }"}
+
+    payloads:
+      Path:
+        - /graphql
+        - /gql
+        - /api/graphql
+        - /v1/graphql
+        - /v2/graphql
+        - /query
+        - /graphql/v1
+        - /api/v1/graphql
+        - /graphql/console
+
+    attack: sniper
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        words:
+          - "mutationType"
+          - "fields"
+        condition: and
+
+      - type: regex
+        part: body
+        regex:
+          - '"name"\s*:\s*"(delete[A-Z]|remove[A-Z]|destroy[A-Z]|update[Rr]ole|set[Rr]ole|change[Rr]ole|create[Aa]dmin|add[Aa]dmin|grant[A-Z]|revoke[A-Z]|reset[Pp]assword|change[Pp]assword|update[Pp]assword|disable[A-Z]|enable[A-Z]|suspend[A-Z]|ban[A-Z]|promote|escalate|impersonate|transfer[Oo]wner|invite[Aa]dmin|modify[Pp]ermission|update[Pp]ermission|assign[Rr]ole|create[Uu]ser|register[Uu]ser|update[Uu]ser|merge[Aa]ccount|link[Aa]ccount|verify[Ee]mail|confirm[Ee]mail|approve|reject)'
+
+    extractors:
+      - type: regex
+        part: body
+        name: dangerous_mutations
+        regex:
+          - '"name"\s*:\s*"((?:delete|remove|destroy|update|set|change|create|add|grant|revoke|reset|disable|enable|suspend|ban|promote|escalate|impersonate|transfer|invite|modify|assign|merge|link|verify|confirm|approve|reject)[A-Za-z]*)"'
+        group: 1
+
+      - type: regex
+        part: body
+        name: all_mutations
+        regex:
+          - '"name"\s*:\s*"([a-zA-Z_][a-zA-Z0-9_]*)"'
+        group: 1

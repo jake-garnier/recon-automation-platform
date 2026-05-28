@@ -1,0 +1,10 @@
+RIPE
+====
+
+URL: https://apps.db.ripe.net/db-web-ui/query
+
+Réseaux IP Européens — regional internet registry for Europe, Central Asia, and the Middle East. WHOIS database for IP and ASN lookups.
+
+Usage: IP/ASN ownership lookup for European/Middle Eastern addresses.
+Input: IP address, ASN, or organization.
+Output: Network allocation, organization, abuse contacts.

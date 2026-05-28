@@ -1,0 +1,13 @@
+ysoserial
+=========
+
+URL: https://github.com/frohoff/ysoserial
+
+Tool for generating payloads that exploit unsafe Java object deserialization. Supports multiple gadget chains for various Java libraries.
+
+Usage: Generate Java deserialization exploit payloads.
+Input: Gadget chain name + command to execute.
+Output: Serialized Java object payload.
+
+Example:
+  java -jar ysoserial.jar CommonsCollections1 'command here' > payload.bin

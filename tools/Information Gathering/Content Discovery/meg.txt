@@ -1,0 +1,13 @@
+meg
+===
+
+URL: https://github.com/tomnomnom/meg
+
+Fetch many paths for many hosts without hammering servers. By tomnomnom. Designed for mass content discovery across many hosts while being respectful of rate limits.
+
+Usage: Fetch specific paths across many hosts.
+Input: List of hosts + list of paths.
+Output: Response bodies saved to files organized by host.
+
+Example:
+  meg -d 1000 -v paths.txt hosts.txt output/

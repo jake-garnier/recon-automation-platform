@@ -1,0 +1,10 @@
+Drozer
+======
+
+URL: https://github.com/FSecureLABS/drozer
+
+Android security assessment framework by F-Secure. Allows interaction with the Android IPC mechanism, finding attack surfaces, and exploiting vulnerabilities.
+
+Usage: Android app security assessment via IPC.
+Input: Target app on connected device.
+Output: Attack surface analysis, vulnerability findings.

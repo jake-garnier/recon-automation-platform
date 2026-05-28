@@ -1,0 +1,96 @@
+# SPLIT 2026-05-23: the original template fired on the mere presence of a
+# JWKS response containing "keys", which produced 4+ FPs in the 2026-05-23
+# batch triage (no actual alg:none exploitation tested). See
+# [[feedback_systemic_template_fps_2026-05-23]].
+#
+# Now:
+#   1. jwks-public-key-exposure (info) — flags any reachable JWKS endpoint.
+#                                        Useful recon signal, NOT a vuln.
+#   2. jwt-alg-confusion (critical)    — only fires if the server actually
+#                                        accepts a forged alg:none / kid-injection
+#                                        token against a /me-style endpoint.
+#                                        Requires confirmed exploit, not just
+#                                        attack-surface detection.
+
+id: jwks-public-key-exposure
+
+info:
+  name: JWKS Public Key Endpoint Reachable
+  author: custom
+  severity: info
+  description: |
+    Detects publicly reachable JWKS (JSON Web Key Set) endpoints. JWKS docs
+    are intended to be public for token verification, but their presence
+    indicates JWT-based authentication is in use and the public key is
+    available — which is the precondition for RS256 → HS256 algorithm
+    confusion attacks (where the public key is used as the HMAC secret).
+
+    Reports the kid, kty, alg of each key. Manual follow-up:
+      1. Capture a real JWT from any auth flow (login, OAuth callback)
+      2. Verify the JWT's `kid` header matches a key in this JWKS
+      3. Try forging a token signed with HS256 using the JWKS public key
+         as the secret (jwt_tool: `python3 jwt_tool.py <jwt> -X k -pk pub.key`)
+      4. Replay against a protected endpoint
+  reference:
+    - https://portswigger.net/web-security/jwt/algorithm-confusion
+    - https://github.com/ticarpi/jwt_tool
+  tags: jwt,jwks,crypto,recon,info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/.well-known/jwks.json"
+      - "{{BaseURL}}/jwks"
+      - "{{BaseURL}}/jwks.json"
+      - "{{BaseURL}}/oauth/discovery/keys"
+      - "{{BaseURL}}/api/v1/auth/jwks"
+      - "{{BaseURL}}/.well-known/openid-configuration/jwks"
+      - "{{BaseURL}}/auth/realms/master/protocol/openid-connect/certs"
+      - "{{BaseURL}}/certs"
+      - "{{BaseURL}}/.auth/keys"
+
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        words:
+          - '"keys"'
+          - '"kty"'
+        condition: and
+
+    extractors:
+      - type: regex
+        name: key_type
+        part: body
+        group: 1
+        regex:
+          - '"kty"\s*:\s*"([^"]+)"'
+
+      - type: regex
+        name: algorithm
+        part: body
+        group: 1
+        regex:
+          - '"alg"\s*:\s*"([^"]+)"'
+
+      - type: regex
+        name: key_id
+        part: body
+        group: 1
+        regex:
+          - '"kid"\s*:\s*"([^"]+)"'
+
+---
+
+# Note: a TRUE jwt-alg-confusion template would require a valid JWT from the
+# target (obtained via login flow) + a multi-step request (forge → replay).
+# Nuclei DSL can't do that without a pre-supplied token. Leave that to
+# manual testing with jwt_tool against an authenticated session.
+#
+# This intentionally has no second template — false-positive risk is too
+# high for any auto-fire critical-severity finding without a real token.

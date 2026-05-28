@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Oracle Pipeline #{{ pipeline_id }}{% endblock %}
+{% block content %}
+
+<nav aria-label="breadcrumb">
+    <ul>
+        <li><a href="/oracle-pipeline">Oracle Pipelines</a></li>
+        <li>Pipeline #{{ pipeline_id }}</li>
+    </ul>
+</nav>
+
+<h1>Oracle Pipeline #{{ pipeline_id }}</h1>
+<p id="pipeline-summary">Loading...</p>
+
+<h2>Phase progress</h2>
+<div id="phases-container"><em>Loading...</em></div>
+
+<h2>Oracle candidates detected</h2>
+<div id="findings-container"><em>Loading...</em></div>
+
+<script>
+const PIPELINE_ID = {{ pipeline_id }};
+
+async function loadDetail() {
+    try {
+        const resp = await fetch('/api/oracle-pipeline/' + PIPELINE_ID);
+        const data = await resp.json();
+        if (!resp.ok) {
+            document.getElementById('pipeline-summary').innerHTML =
+                '<span style="color:var(--sev-critical)">Error: ' + (data.error || 'unknown') + '</span>';
+            return;
+        }
+
+        // Summary
+        const sumEl = document.getElementById('pipeline-summary');
+        const color = data.phase_status === 'running' ? 'var(--sev-high)'
+            : data.phase_status === 'completed' ? 'var(--sev-low)'
+            : 'var(--pico-muted-color)';
+        sumEl.innerHTML = `
+            <strong>Target:</strong> ${data.target_name || '—'} &middot;
+            <strong>Program:</strong> ${data.program_handle || '—'} &middot;
+            <strong>Status:</strong> <span style="color:${color}">${data.phase_status}</span> &middot;
+            <strong>Phase:</strong> ${data.current_phase}/${data.max_phase} (${data.phase_name || ''}) &middot;
+            <strong>Scope:</strong> ${data.domains_count || 0} domains
+        `;
+
+        // Phase breakdown
+        const phasesEl = document.getElementById('phases-container');
+        let phasesHtml = '<table><thead><tr><th>Phase</th><th>Name</th><th>Tools</th><th>Status</th></tr></thead><tbody>';
+        for (const phase of data.phases || []) {
+            const toolCells = phase.tools.map(t => {
+                const badge = t.status === 'completed' ? 'badge-open'
+                    : t.status === 'running' ? 'badge-paused'
+                    : t.status === 'failed' ? 'badge-closed'
+                    : '';
+                return `<span class="badge ${badge}" title="${t.error || ''}">${t.tool}: ${t.result_count || 0}</span>`;
+            }).join(' ');
+            phasesHtml += `
+                <tr>
+                    <td>${phase.phase}</td>
+                    <td>${phase.phase_name}</td>
+                    <td>${toolCells || '<em>no scans yet</em>'}</td>
+                    <td>${phase.status}</td>
+                </tr>
+            `;
+        }
+        phasesHtml += '</tbody></table>';
+        phasesEl.innerHTML = phasesHtml;
+
+        // Findings grouped by result_type
+        const findingsEl = document.getElementById('findings-container');
+        if (!data.findings || !Object.keys(data.findings).length) {
+            findingsEl.innerHTML = '<p><em>No oracle candidates detected yet.</em></p>';
+        } else {
+            let html = '';
+            const sevOrder = {critical: 0, high: 1, medium: 2, low: 3, informational: 4};
+            const sorted = Object.entries(data.findings).sort((a, b) => {
+                const sa = sevOrder[a[1][0]?.severity] ?? 99;
+                const sb = sevOrder[b[1][0]?.severity] ?? 99;
+                return sa - sb;
+            });
+            for (const [rtype, items] of sorted) {
+                const firstSev = items[0]?.severity || 'informational';
+                html += `<details ${firstSev === 'critical' || firstSev === 'high' ? 'open' : ''}>
+                    <summary><span class="sev-${firstSev}">${rtype}</span> (${items.length})</summary>
+                    <ul style="font-size:0.9em">`;
+                for (const item of items.slice(0, 50)) {
+                    html += `<li><span class="sev-${item.severity || 'informational'}">
+                        ${item.value || '(no value)'}</span>`;
+                    if (item.reason) html += ` — <small>${item.reason}</small>`;
+                    html += `</li>`;
+                }
+                if (items.length > 50) {
+                    html += `<li><em>... ${items.length - 50} more</em></li>`;
+                }
+                html += `</ul></details>`;
+            }
+            findingsEl.innerHTML = html;
+        }
+    } catch (e) {
+        document.getElementById('pipeline-summary').innerHTML =
+            '<span style="color:var(--sev-critical)">Network error: ' + e + '</span>';
+    }
+}
+
+loadDetail();
+setInterval(loadDetail, 10000);
+</script>
+{% endblock %}

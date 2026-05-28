@@ -1,0 +1,14 @@
+XSStrike
+========
+
+URL: https://github.com/s0md3v/XSStrike
+
+Advanced XSS detection and exploitation tool. Uses fuzzing, context analysis, and WAF detection to find and exploit reflected XSS. Written in Python.
+
+Usage: Detect and exploit reflected XSS vulnerabilities.
+Input: Target URL with parameters.
+Output: XSS payloads that bypass filters/WAFs.
+
+Example:
+  python3 xsstrike.py -u 'https://example.com/page?q=test'
+  python3 xsstrike.py -u 'https://example.com/page?q=test' --crawl

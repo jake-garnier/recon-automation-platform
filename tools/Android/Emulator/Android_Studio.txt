@@ -1,0 +1,10 @@
+Android Studio
+==============
+
+URL: https://developer.android.com/studio
+
+Official Android IDE with built-in emulator (AVD). Provides full Android development environment with debugging tools, profiler, and emulator with various API levels.
+
+Usage: Android app development, debugging, and emulated testing.
+Input: Android projects or APKs.
+Output: Full development and testing environment.

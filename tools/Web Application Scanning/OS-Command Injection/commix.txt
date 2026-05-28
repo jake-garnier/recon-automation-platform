@@ -1,0 +1,13 @@
+commix
+======
+
+URL: https://github.com/commixproject/commix
+
+Automated OS command injection exploitation tool. Tests and exploits command injection vulnerabilities in web applications.
+
+Usage: Detect and exploit OS command injection vulnerabilities.
+Input: Target URL with injectable parameter.
+Output: Command execution results, shell access.
+
+Example:
+  python3 commix.py -u 'https://example.com/page?param=value'

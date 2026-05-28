@@ -1,0 +1,13 @@
+GoSpider
+========
+
+URL: https://github.com/jaeles-project/gospider
+
+Fast web spider written in Go. Crawls websites to find links, JavaScript files, forms, and other endpoints. Supports robots.txt, sitemap.xml parsing.
+
+Usage: Web crawling for endpoint discovery.
+Input: Target URL or list of URLs.
+Output: Discovered URLs, JS files, forms, endpoints.
+
+Example:
+  gospider -s https://example.com -d 2 -c 10

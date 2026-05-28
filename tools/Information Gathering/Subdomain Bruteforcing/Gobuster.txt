@@ -1,0 +1,15 @@
+Gobuster
+========
+
+URL: https://github.com/OJ/gobuster
+
+Multi-purpose bruteforce tool written in Go. Supports DNS subdomain bruteforcing, URI/directory bruteforcing, virtual host discovery, and S3 bucket enumeration.
+
+Usage: DNS subdomain bruteforcing, directory/file enumeration.
+Input: Target domain/URL + wordlist.
+Output: Discovered subdomains, directories, or files.
+
+Example:
+  gobuster dns -d example.com -w wordlist.txt
+  gobuster dir -u https://example.com -w wordlist.txt
+  gobuster vhost -u https://example.com -w wordlist.txt

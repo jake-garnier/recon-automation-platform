@@ -1,0 +1,10 @@
+pydictor
+========
+
+URL: https://github.com/LandGrey/pydictor
+
+Powerful password dictionary generator. Creates wordlists based on various rules, patterns, and combinations.
+
+Usage: Generate password dictionaries.
+Input: Rules, patterns, character sets.
+Output: Custom wordlist files.

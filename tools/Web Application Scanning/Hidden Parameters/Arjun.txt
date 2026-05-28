@@ -1,0 +1,14 @@
+Arjun
+=====
+
+URL: https://github.com/s0md3v/Arjun
+
+HTTP parameter discovery tool. Finds hidden/undocumented query parameters in web applications using smart heuristics and a large built-in wordlist.
+
+Usage: Discover hidden GET/POST parameters.
+Input: Target URL.
+Output: Discovered parameters.
+
+Example:
+  arjun -u https://example.com/page
+  arjun -u https://example.com/page -m POST

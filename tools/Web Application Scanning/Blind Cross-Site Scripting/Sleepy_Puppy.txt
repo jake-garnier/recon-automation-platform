@@ -1,0 +1,10 @@
+Sleepy Puppy
+============
+
+URL: https://github.com/Netflix-Skunkworks/sleepy-puppy
+
+Blind XSS payload management framework by Netflix. Tracks and manages blind XSS payloads across assessments.
+
+Usage: Manage blind XSS testing campaigns.
+Input: Target parameters for payload injection.
+Output: Callback notifications when payloads execute.

@@ -1,0 +1,10 @@
+ReverseWhoisIO
+==============
+
+URL: https://www.reversewhois.io/
+
+Reverse WHOIS search engine. Find domains owned by the same entity based on WHOIS registration data.
+
+Usage: Discover related domains via reverse WHOIS.
+Input: Company name, registrant email, etc.
+Output: List of domains registered by the same entity.

@@ -1,0 +1,10 @@
+parameth
+========
+
+URL: https://github.com/maK-/parameth
+
+Tool for brute-forcing GET and POST parameters on web applications. Uses a wordlist to test for hidden parameters that affect server responses.
+
+Usage: Brute-force hidden parameters.
+Input: Target URL + parameter wordlist.
+Output: Discovered parameters that change the response.

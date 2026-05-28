@@ -1,0 +1,10 @@
+enumapis
+========
+
+URL: https://github.com/infosec-au/enumapis
+
+Extracts API endpoints from JavaScript files. Useful for finding hidden or undocumented API routes in web applications.
+
+Usage: Extract API endpoints from JS files.
+Input: JavaScript files or URLs.
+Output: Discovered API endpoints.

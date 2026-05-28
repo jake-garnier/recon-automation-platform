@@ -1,0 +1,12 @@
+DomainTools
+===========
+
+URL: https://whois.domaintools.com/
+
+Commercial platform for domain intelligence and reverse WHOIS lookups. Find all domains registered by the same entity using registrant email, name, or organization.
+
+Usage: Reverse WHOIS to discover related domains owned by same entity.
+Input: Domain, email, registrant name, or organization.
+Output: List of associated domains, WHOIS records.
+
+Note: Paid service, limited free lookups available.

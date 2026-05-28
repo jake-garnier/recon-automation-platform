@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Recon — H1 Bounty Browser{% endblock %}
+
+{% block extra_head %}
+<style>
+    .tool-card {
+        padding: 1rem;
+        border-radius: 8px;
+        background: var(--pico-card-background-color);
+        border: 1px solid var(--pico-muted-border-color);
+    }
+    .tool-card h4 { margin-bottom: 0.5rem; }
+    .tool-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0; }
+    .status-dot {
+        display: inline-block;
+        width: 10px; height: 10px;
+        border-radius: 50%;
+        margin-right: 0.4rem;
+        vertical-align: middle;
+    }
+    .status-idle { background: #666; }
+    .status-running { background: #f1c40f; animation: pulse 1s infinite; }
+    .status-completed { background: #2ecc40; }
+    .status-failed { background: #ff4136; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .log-box {
+        background: #1a1a2e;
+        color: #0f0;
+        font-family: monospace;
+        font-size: 0.8rem;
+        padding: 0.75rem;
+        border-radius: 6px;
+        max-height: 300px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+    .result-tabs { display: flex; gap: 0; margin-bottom: 0; }
+    .result-tabs button {
+        padding: 0.5rem 1.2rem;
+        border: 1px solid var(--pico-muted-border-color);
+        background: transparent;
+        cursor: pointer;
+        color: var(--pico-color);
+        border-bottom: none;
+        border-radius: 6px 6px 0 0;
+    }
+    .result-tabs button.active {
+        background: var(--pico-card-background-color);
+        font-weight: 600;
+    }
+    .results-panel {
+        border: 1px solid var(--pico-muted-border-color);
+        border-radius: 0 6px 6px 6px;
+        padding: 1rem;
+        min-height: 200px;
+    }
+    .target-card {
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        background: var(--pico-card-background-color);
+        border: 1px solid var(--pico-muted-border-color);
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .target-card .handle { font-weight: 700; font-size: 1.1rem; }
+    .target-card .meta { opacity: 0.7; font-size: 0.85rem; }
+    .sev-critical { color: #e74c3c; font-weight: 700; }
+    .sev-high { color: #e67e22; font-weight: 600; }
+    .sev-medium { color: #f1c40f; }
+    .sev-low { color: #2ecc71; }
+    .sev-info { color: #3498db; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Recon Dashboard</h1>
+
+<!-- Agent status -->
+<div id="agent-status" style="margin-bottom: 1rem;">
+    <small><span class="status-dot status-idle" id="agent-dot"></span> Agent: <span id="agent-text">checking...</span></small>
+</div>
+
+<!-- Add Target -->
+<details id="add-target-section">
+    <summary><strong>Add Target from Program</strong></summary>
+    <div style="display:flex; gap:0.75rem; align-items:end; flex-wrap:wrap; margin-top:1rem;">
+        <label>
+            Program
+            <select id="program-select" style="min-width:300px;">
+                <option value="">-- Select program --</option>
+                {% for p in programs %}
+                <option value="{{ p['handle'] }}">{{ p['handle'] }} — {{ p['name'] or '' }} ({{ p['wildcards'] }}W / {{ p['scope_count'] }}S){% if p['signal_required'] == 1 %} [SIGNAL]{% elif p['signal_required'] == 0 %} [NO-SIG]{% endif %}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <button id="btn-add-target" class="outline">Create Target</button>
+    </div>
+</details>
+
+<hr>
+
+<!-- Existing Targets -->
+<h3>Targets</h3>
+<div id="targets-list">
+{% for t in targets %}
+<div class="target-card" data-target-id="{{ t['id'] }}">
+    <div>
+        <div class="handle">{{ t['program_handle'] }}</div>
+        <div class="meta">
+            {{ t['domain_count'] }} domains &middot;
+            {{ t['scan_count'] }} scans &middot;
+            created {{ t['created_at'][:10] }}
+        </div>
+    </div>
+    <div style="display:flex; gap:0.5rem;">
+        <a href="/recon/targets/{{ t['id'] }}" role="button" class="outline" style="padding:0.3em 0.8em;font-size:0.85em;">Open</a>
+        <button class="outline secondary btn-delete-target" data-id="{{ t['id'] }}" style="padding:0.3em 0.8em;font-size:0.85em;">Delete</button>
+    </div>
+</div>
+{% else %}
+<p class="muted">No targets yet. Add one from a program above.</p>
+{% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Check agent health
+fetch('/api/recon/agent/tools')
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            document.getElementById('agent-dot').className = 'status-dot status-failed';
+            document.getElementById('agent-text').textContent = 'offline — ' + data.error;
+        } else {
+            const available = Object.entries(data).filter(([k,v]) => v.available).map(([k]) => k);
+            document.getElementById('agent-dot').className = 'status-dot status-completed';
+            document.getElementById('agent-text').textContent = 'online — ' + available.join(', ');
+        }
+    })
+    .catch(() => {
+        document.getElementById('agent-dot').className = 'status-dot status-failed';
+        document.getElementById('agent-text').textContent = 'unreachable';
+    });
+
+// Add target
+document.getElementById('btn-add-target').addEventListener('click', () => {
+    const handle = document.getElementById('program-select').value;
+    if (!handle) return alert('Select a program first');
+
+    const form = new FormData();
+    form.append('handle', handle);
+
+    fetch('/api/recon/targets', { method: 'POST', body: form })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) return alert(data.error);
+            location.reload();
+        });
+});
+
+// Delete target
+document.querySelectorAll('.btn-delete-target').forEach(btn => {
+    btn.addEventListener('click', () => {
+        if (!confirm('Delete this target and all its scans/results?')) return;
+        fetch('/api/recon/targets/' + btn.dataset.id, { method: 'DELETE' })
+            .then(() => location.reload());
+    });
+});
+</script>
+{% endblock %}

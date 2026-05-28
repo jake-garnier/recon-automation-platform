@@ -1,0 +1,10 @@
+dirbuster-ng
+============
+
+URL: https://sourceforge.net/projects/dirbuster/
+
+Java-based directory and file brute-forcer. GUI application for discovering hidden directories and files on web servers. Successor to the original DirBuster.
+
+Usage: GUI-based directory and file enumeration.
+Input: Target URL + wordlist.
+Output: Discovered directories and files.

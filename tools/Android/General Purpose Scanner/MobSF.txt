@@ -1,0 +1,13 @@
+MobSF
+=====
+
+URL: https://github.com/MobSF/Mobile-Security-Framework-MobSF
+
+Mobile Security Framework — automated mobile app security testing framework. Supports static and dynamic analysis for Android and iOS. Web-based UI.
+
+Usage: Automated mobile app security analysis (static + dynamic).
+Input: APK, IPA, or source code.
+Output: Security report with findings, CVEs, hardcoded secrets, etc.
+
+Example:
+  docker run -p 8000:8000 opensecurity/mobile-security-framework-mobsf

@@ -1,0 +1,13 @@
+aquatone
+========
+
+URL: https://github.com/michenriksen/aquatone
+
+Visual inspection tool for websites. Takes screenshots, generates an HTML report for easy browsing. Useful for visually reviewing large numbers of discovered hosts.
+
+Usage: Visual inspection and reporting of discovered web hosts.
+Input: List of URLs (stdin).
+Output: HTML report with screenshots and headers.
+
+Example:
+  cat urls.txt | aquatone

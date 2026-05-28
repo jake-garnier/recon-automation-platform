@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}H1 Bounty Browser{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --badge-open: #2ecc40;
+            --badge-paused: #ff851b;
+            --badge-closed: #ff4136;
+            --sev-critical: #e74c3c;
+            --sev-high: #e67e22;
+            --sev-medium: #f1c40f;
+            --sev-low: #2ecc71;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            text-align: center;
+            padding: 1.5rem 1rem;
+            border-radius: 8px;
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        .stat-card .number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 0.25rem;
+        }
+        .stat-card .label {
+            font-size: 0.85rem;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.15em 0.55em;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        .badge-open { background: var(--badge-open); color: #fff; }
+        .badge-paused { background: var(--badge-paused); color: #fff; }
+        .badge-closed { background: var(--badge-closed); color: #fff; }
+        .sev-critical { color: var(--sev-critical); font-weight: 700; }
+        .sev-high { color: var(--sev-high); font-weight: 600; }
+        .sev-medium { color: var(--sev-medium); }
+        .sev-low { color: var(--sev-low); }
+        .mono { font-family: monospace; font-size: 0.85em; }
+        .filter-bar {
+            display: flex;
+            gap: 0.75rem;
+            align-items: end;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+        .filter-bar label { margin-bottom: 0; }
+        .filter-bar input, .filter-bar select { margin-bottom: 0; }
+        .bar-fill {
+            display: inline-block;
+            height: 1em;
+            border-radius: 3px;
+            background: var(--pico-primary);
+            vertical-align: middle;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            align-items: center;
+        }
+        .muted { opacity: 0.6; font-size: 0.85em; }
+        a.plain { text-decoration: none; }
+        footer { margin-top: 3rem; padding: 1rem 0; opacity: 0.5; font-size: 0.85em; }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <nav class="container">
+        <ul>
+            <li><a href="/" class="plain"><strong>H1 Bounty Browser</strong></a></li>
+        </ul>
+        <ul>
+            <li><a href="/">Dashboard</a></li>
+            <li><a href="/programs">Programs</a></li>
+            <li><a href="/recon">Recon</a></li>
+            <li><a href="/recon/autopilot">Autopilot</a></li>
+            <li><a href="/oracle-pipeline">Oracle Pipeline</a></li>
+            <li><a href="/hacktivity">Hacktivity</a></li>
+            <li><a href="/custom-templates">Templates</a></li>
+            <li><a href="/credentials">Credentials</a></li>
+            <li><a href="/bleichenbacher">Bleichenbacher</a></li>
+            <li>
+                <a href="#" id="theme-toggle" role="button" class="outline" style="padding:0.3em 0.7em;font-size:0.85em;">
+                    Toggle Theme
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+    <footer class="container">
+        <small>HackerOne Bounty Browser &mdash; Local Database</small>
+    </footer>
+    <script>
+        document.getElementById('theme-toggle').addEventListener('click', (e) => {
+            e.preventDefault();
+            const html = document.documentElement;
+            html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark';
+        });
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

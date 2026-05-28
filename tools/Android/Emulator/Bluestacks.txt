@@ -1,0 +1,10 @@
+Bluestacks
+==========
+
+URL: https://www.bluestacks.com/
+
+Popular Android emulator for PC and Mac. Primarily for running Android apps on desktop. Can be used for mobile app testing in a controlled environment.
+
+Usage: Run Android apps on desktop for testing.
+Input: APK files or apps from Play Store.
+Output: Running Android environment.

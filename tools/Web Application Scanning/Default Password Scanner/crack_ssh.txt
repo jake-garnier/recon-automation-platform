@@ -1,0 +1,10 @@
+crack_ssh
+=========
+
+URL: https://github.com/netxfly/crack_ssh
+
+SSH password cracking tool. Tests SSH servers for weak credentials using dictionary attacks.
+
+Usage: SSH brute-force attacks.
+Input: Target host + credential lists.
+Output: Valid SSH credentials.

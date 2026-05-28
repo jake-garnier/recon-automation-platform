@@ -1,0 +1,15 @@
+httpx
+=====
+
+URL: https://github.com/projectdiscovery/httpx
+
+Multi-purpose HTTP toolkit by ProjectDiscovery. Probes for live web servers with status codes, titles, tech detection, content length, and more. Written in Go.
+
+Usage: HTTP probing with rich metadata extraction.
+Input: List of hosts/URLs.
+Output: JSONL with URL, status code, title, technologies, etc.
+
+Example:
+  cat subdomains.txt | httpx -sc -title -tech-detect -json
+
+Note: Already integrated in the recon pipeline as 'httpx-toolkit' (Kali package name).

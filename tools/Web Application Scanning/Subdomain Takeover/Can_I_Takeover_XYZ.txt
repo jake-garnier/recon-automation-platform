@@ -1,0 +1,9 @@
+Can I Takeover XYZ
+==================
+
+URL: https://github.com/EdOverflow/can-i-take-over-xyz
+
+Community-maintained reference list of services and whether they are vulnerable to subdomain takeover. Not a tool per se, but the definitive reference for takeover fingerprints.
+
+Usage: Reference guide for which services are vulnerable to takeover.
+Format: Table of services with vulnerability status, evidence, and documentation.

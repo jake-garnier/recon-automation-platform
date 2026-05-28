@@ -1,0 +1,10 @@
+Binary Cookie Reader
+====================
+
+URL: https://github.com/dan1elt0m/binarycookies
+
+Python script to read and parse Apple's binary cookie format (.binarycookies). Extracts cookie data for analysis.
+
+Usage: Parse iOS/macOS binary cookie files.
+Input: .binarycookies file.
+Output: Human-readable cookie data.

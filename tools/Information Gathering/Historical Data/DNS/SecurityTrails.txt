@@ -1,0 +1,12 @@
+SecurityTrails
+==============
+
+URL: https://securitytrails.com/
+
+Commercial API and web platform for historical DNS data, WHOIS records, and domain/IP intelligence. Provides current and historical A, AAAA, MX, NS, SOA, TXT, and CNAME records.
+
+Usage: Historical DNS lookups, finding related domains/IPs, subdomain discovery.
+Input: Domain or IP via web UI or API.
+Output: Historical DNS records, associated domains, WHOIS history.
+
+Note: Free tier available with limited API queries. API key needed for programmatic access.

@@ -1,0 +1,17 @@
+nuclei
+======
+
+URL: https://github.com/projectdiscovery/nuclei
+
+Fast and customizable vulnerability scanner by ProjectDiscovery. Uses YAML-based templates to detect vulnerabilities, misconfigurations, and exposures. Huge community template library.
+
+Usage: Template-based vulnerability scanning.
+Input: Target URLs/hosts + templates.
+Output: Detected vulnerabilities with severity.
+
+Example:
+  nuclei -u https://example.com
+  nuclei -l urls.txt -severity critical,high
+  nuclei -l urls.txt -t http/takeovers/
+
+Note: Already integrated in the recon pipeline.

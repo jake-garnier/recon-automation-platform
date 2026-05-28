@@ -1,0 +1,10 @@
+Blazy
+=====
+
+URL: https://github.com/s0md3v/Blazy
+
+Modern login page brute-forcer. Automatically detects login forms and tests credentials.
+
+Usage: Automated login form brute-forcing.
+Input: Target URL with login form.
+Output: Valid credentials.

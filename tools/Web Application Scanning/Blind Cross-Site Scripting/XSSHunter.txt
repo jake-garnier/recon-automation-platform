@@ -1,0 +1,10 @@
+XSSHunter
+=========
+
+URL: https://github.com/mandatoryprogrammer/xsshunter
+
+Tool for finding blind XSS vulnerabilities. Hosts payloads that phone home when executed, capturing screenshots, cookies, and page content. Self-hosted version.
+
+Usage: Detect blind XSS vulnerabilities.
+Input: Inject XSSHunter payloads into target parameters.
+Output: Alerts with screenshots, DOM, cookies when payload fires.

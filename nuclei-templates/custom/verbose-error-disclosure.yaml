@@ -1,0 +1,123 @@
+id: verbose-error-disclosure
+
+info:
+  name: Generic Verbose Error and Stack Trace Disclosure
+  author: custom
+  severity: low
+  description: |
+    Sends malformed requests to trigger error responses and detects stack traces,
+    internal IPs, database connection strings, and debug output across all major
+    frameworks (Java, Python, Node.js, PHP, Ruby, .NET, Go). A single template
+    covering patterns that framework-specific templates miss.
+  tags: info-disclosure,debug,stack-trace,misconfiguration
+
+http:
+  # Trigger errors via malformed input
+  - method: GET
+    path:
+      - "{{BaseURL}}/%00"
+      - "{{BaseURL}}/{{randstr}}"
+      - "{{BaseURL}}/api/{{randstr}}"
+      - "{{BaseURL}}/api/v1/null"
+      - "{{BaseURL}}/undefined"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 500
+          - 400
+          - 403
+          - 200
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          # Java stack traces
+          - 'at\s+(com|org|net|io|java)\.[a-zA-Z0-9_.]+\([A-Za-z0-9_]+\.java:\d+\)'
+          - 'java\.(lang|io|sql|net)\.\w+Exception'
+          - 'javax\.\w+\.\w+Exception'
+          - 'org\.springframework\.\w+'
+          # Python tracebacks
+          - 'Traceback \(most recent call last\)'
+          - 'File "/.+\.py", line \d+'
+          - '(ModuleNotFoundError|ImportError|AttributeError|KeyError|TypeError|ValueError|RuntimeError):'
+          # Node.js stack traces
+          - 'at Object\.<anonymous>'
+          - 'at Module\.(load|_compile|_resolveFilename)'
+          - 'at\s+\S+\s+\(/[^\)]+\.js:\d+:\d+\)'
+          - '(ReferenceError|TypeError|SyntaxError|RangeError|URIError):'
+          # PHP errors
+          - '<b>(Fatal|Parse|Warning|Notice) error</b>'
+          - 'Stack trace:.*#\d+\s+/\S+\.php\(\d+\)'
+          - 'include_path='
+          # Ruby stack traces
+          - '\(([A-Z][a-z]+::)*[A-Z][a-z]+Error\)'
+          - 'from /\S+\.rb:\d+:in'
+          - 'app/controllers/\w+_controller\.rb'
+          # .NET stack traces
+          - 'at\s+\w+(\.\w+)+\s+in\s+\S+:\s*line\s+\d+'
+          - 'System\.\w+Exception'
+          - 'Server Error in .+ Application'
+          # Go panics
+          - 'goroutine \d+ \[running\]:'
+          - 'panic: runtime error'
+          # Database connection strings in body
+          - 'jdbc:[a-z]+://[^\s<"]+:\d+'
+          - 'mongodb(\+srv)?://[^\s<"]+:\d+'
+          - 'postgres(ql)?://[^\s<"]+:\d+'
+          - 'mysql://[^\s<"]+:\d+'
+          - 'redis://[^\s<"]+:\d+'
+          # Internal IPs in body
+          - '(?:^|[^0-9])(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})(?:[^0-9]|$)'
+
+    extractors:
+      - type: regex
+        name: stack_trace_framework
+        part: body
+        regex:
+          - '(org\.springframework\.\w+|django\.\w+|express\.\w+|flask\.\w+|laravel|rails|System\.\w+\.dll)'
+        group: 1
+
+      - type: regex
+        name: internal_ip
+        part: body
+        regex:
+          - '(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})'
+        group: 1
+
+      - type: regex
+        name: db_connection_string
+        part: body
+        regex:
+          - '((?:jdbc|mongodb|postgres|mysql|redis)(?:\+srv)?://[^\s<"]+)'
+        group: 1
+
+  # Also trigger via malformed JSON POST
+  - raw:
+      - |
+        POST {{BaseURL}}/api/{{randstr}} HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: Mozilla/5.0
+
+        {"__proto__":{"a":1},"constructor":null,"id":null}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 500
+          - 400
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - 'at\s+(com|org|net|io|java)\.[a-zA-Z0-9_.]+\([A-Za-z0-9_]+\.java:\d+\)'
+          - 'Traceback \(most recent call last\)'
+          - 'at Object\.<anonymous>'
+          - '<b>(Fatal|Parse) error</b>'
+          - 'goroutine \d+ \[running\]:'
+          - 'System\.\w+Exception'

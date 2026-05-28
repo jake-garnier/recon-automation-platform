@@ -1,0 +1,14 @@
+ApkTool
+=======
+
+URL: https://bitbucket.org/iBotPeaches/apktool/
+
+Tool for reverse engineering Android APK files. Decodes resources to nearly original form and rebuilds them after modifications. Essential for Android RE.
+
+Usage: Decode/rebuild APK resources, smali code analysis.
+Input: APK file.
+Output: Decoded resources, smali code, AndroidManifest.xml.
+
+Example:
+  apktool d app.apk -o output/
+  apktool b output/ -o modified.apk

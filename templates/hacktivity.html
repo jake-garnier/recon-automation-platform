@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Hacktivity Intelligence — H1 Bounty Browser{% endblock %}
+
+{% block extra_head %}
+<style>
+    .cat-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
+    .cat-bar .cat-name { min-width: 180px; font-size: 0.85em; }
+    .cat-bar .cat-fill { height: 20px; border-radius: 3px; background: var(--pico-primary); min-width: 2px; }
+    .cat-bar .cat-count { font-size: 0.8em; opacity: 0.7; min-width: 80px; }
+    .progress-bar { background: var(--pico-muted-border-color); border-radius: 4px; height: 8px; margin-top: 0.5rem; }
+    .progress-fill { background: var(--pico-primary); border-radius: 4px; height: 100%; transition: width 0.3s; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+    .sev-bar { display: inline-block; padding: 0.15em 0.5em; border-radius: 3px; font-size: 0.75em; font-weight: 600; }
+    .sev-bar.critical { background: var(--sev-critical); color: #fff; }
+    .sev-bar.high { background: var(--sev-high); color: #fff; }
+    .sev-bar.medium { background: var(--sev-medium); color: #000; }
+    .sev-bar.low { background: var(--sev-low); color: #000; }
+    .bounty { color: #2ecc40; font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Hacktivity Intelligence</h1>
+
+{% if not stats or stats.get('total', 0) == 0 %}
+<article>
+    <p>No hacktivity reports ingested yet. Run ingestion on the Kali host:</p>
+    <pre><code>python3 ingest_hacktivity.py --limit 500</code></pre>
+</article>
+{% else %}
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="number">{{ "{:,}".format(stats.total) }}</div>
+        <div class="label">Reports</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ "{:,}".format(stats.analyzed) }}</div>
+        <div class="label">Analyzed</div>
+        <div class="progress-bar">
+            <div class="progress-fill" style="width:{{ (100 * stats.analyzed / stats.total)|round if stats.total else 0 }}%"></div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ "{:,}".format(stats.with_bounty) }}</div>
+        <div class="label">With Bounty</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">${{ "{:,.0f}".format(stats.total_bounty) }}</div>
+        <div class="label">Total Bounties</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">${{ "{:,.0f}".format(stats.avg_bounty) }}</div>
+        <div class="label">Avg Bounty</div>
+    </div>
+</div>
+
+<div class="two-col">
+    <!-- Categories -->
+    <div>
+        <h3>Categories{% if categories %} ({{ categories|length }}){% endif %}</h3>
+        {% if categories %}
+        {% set max_cat = categories[0]['cnt'] if categories else 1 %}
+        {% for c in categories %}
+        <div class="cat-bar">
+            <span class="cat-name"><a href="/hacktivity/reports?category={{ c['category'] }}">{{ category_labels.get(c['category'], c['category']) }}</a></span>
+            <span class="cat-fill" style="width:{{ (c['cnt'] / max_cat * 200)|round }}px"></span>
+            <span class="cat-count">{{ c['cnt'] }} &middot; avg ${{ "{:,.0f}".format(c['avg_b']) }}</span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="muted">No reports analyzed yet. Run <code>--analyze</code> mode.</p>
+        {% endif %}
+    </div>
+
+    <!-- Severity Distribution -->
+    <div>
+        <h3>Severity Distribution</h3>
+        {% set max_sev = severities[0]['cnt'] if severities else 1 %}
+        {% for s in severities %}
+        <div class="cat-bar">
+            <span class="cat-name">
+                <a href="/hacktivity/reports?severity={{ s['sev'] }}">
+                    <span class="sev-bar {{ s['sev'] }}">{{ s['sev']|upper }}</span>
+                </a>
+            </span>
+            <span class="cat-fill" style="width:{{ (s['cnt'] / max_sev * 200)|round }}px"></span>
+            <span class="cat-count">{{ s['cnt'] }} &middot; ${{ "{:,.0f}".format(s['total_b']) }}</span>
+        </div>
+        {% endfor %}
+
+        <h3 style="margin-top:2rem">Top Programs</h3>
+        <table>
+            <thead><tr><th>Program</th><th style="text-align:right">Reports</th><th style="text-align:right">Bounties</th></tr></thead>
+            <tbody>
+            {% for p in top_programs %}
+            <tr>
+                <td><a href="/hacktivity/reports?q={{ p['team_handle'] }}">{{ p['team_handle'] }}</a></td>
+                <td style="text-align:right">{{ p['cnt'] }}</td>
+                <td style="text-align:right">{% if p['total_b'] > 0 %}<span class="bounty">${{ "{:,.0f}".format(p['total_b']) }}</span>{% else %}&mdash;{% endif %}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Top Bounties -->
+{% if top_bounties %}
+<h3>Top Bounties</h3>
+<table>
+    <thead><tr><th>Report</th><th>Program</th><th>Severity</th><th>Category</th><th style="text-align:right">Bounty</th></tr></thead>
+    <tbody>
+    {% for r in top_bounties %}
+    <tr>
+        <td><a href="/hacktivity/reports/{{ r['id'] }}">{{ r['title'][:70] }}{% if r['title']|length > 70 %}...{% endif %}</a></td>
+        <td>{{ r['team_handle'] }}</td>
+        <td><span class="sev-{{ r['severity_rating'] or 'unknown' }}">{{ r['severity_rating'] or '?' }}</span></td>
+        <td>{{ category_labels.get(r['category'], r['category'] or '—') }}</td>
+        <td style="text-align:right" class="bounty">${{ "{:,.0f}".format(r['bounty_amount']) }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<!-- Recent Reports -->
+<h3>Recent Reports</h3>
+<table>
+    <thead><tr><th>Report</th><th>Program</th><th>Severity</th><th>Category</th><th>Bounty</th><th>Disclosed</th></tr></thead>
+    <tbody>
+    {% for r in recent %}
+    <tr>
+        <td><a href="/hacktivity/reports/{{ r['id'] }}">{{ r['title'][:60] }}{% if r['title']|length > 60 %}...{% endif %}</a></td>
+        <td>{{ r['team_handle'] or '?' }}</td>
+        <td><span class="sev-{{ r['severity_rating'] or 'unknown' }}">{{ r['severity_rating'] or '?' }}</span></td>
+        <td>{{ category_labels.get(r['category'], r['category'] or '—') }}</td>
+        <td>{% if r['bounty_amount'] %}<span class="bounty">${{ "{:,.0f}".format(r['bounty_amount']) }}</span>{% else %}&mdash;{% endif %}</td>
+        <td class="muted">{{ r['disclosed_at'][:10] if r['disclosed_at'] else '?' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<p><a href="/hacktivity/reports" role="button">Browse All Reports</a></p>
+{% endif %}
+{% endblock %}

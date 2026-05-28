@@ -1,0 +1,12 @@
+nuclei Templates
+================
+
+URL: https://github.com/projectdiscovery/nuclei-templates
+
+Official community-curated template library for Nuclei. Thousands of templates covering CVEs, misconfigurations, exposures, takeovers, default credentials, and more.
+
+Usage: Template library for Nuclei scanner.
+Categories: CVEs, exposures, misconfigurations, takeovers, default-logins, etc.
+
+Update templates:
+  nuclei -update-templates

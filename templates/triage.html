@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Triage — {{ target.program_handle }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .pass-card {
+        padding: 1.5rem;
+        border-radius: 8px;
+        background: var(--pico-card-background-color);
+        border: 1px solid var(--pico-muted-border-color);
+        margin-bottom: 1rem;
+    }
+    .pass-card h3 { margin-bottom: 0.5rem; }
+    .pass-card .desc { opacity: 0.7; font-size: 0.9em; margin-bottom: 1rem; }
+    .pass-card .actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    .prompt-box {
+        background: #1a1a2e;
+        border: 1px solid var(--pico-muted-border-color);
+        border-radius: 6px;
+        padding: 1rem;
+        margin-top: 1rem;
+        max-height: 500px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        font-family: monospace;
+        font-size: 0.82em;
+        line-height: 1.5;
+        display: none;
+    }
+    .prompt-box.visible { display: block; }
+    .type-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .type-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0.75rem;
+        background: var(--pico-card-background-color);
+        border-radius: 4px;
+        font-size: 0.9em;
+    }
+    .type-item .count { font-weight: 700; font-family: monospace; }
+    .coverage-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.25rem;
+    }
+    .coverage-bar .bar {
+        flex: 1;
+        height: 6px;
+        background: var(--pico-muted-border-color);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    .coverage-bar .bar .fill {
+        height: 100%;
+        border-radius: 3px;
+        background: var(--pico-primary);
+    }
+    .btn-sm {
+        padding: 0.3em 0.8em;
+        font-size: 0.85em;
+    }
+    .copied-toast {
+        display: inline-block;
+        color: var(--badge-open);
+        font-size: 0.85em;
+        margin-left: 0.5rem;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    .copied-toast.show { opacity: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<hgroup>
+    <h2>Triage: {{ target.program_handle }}</h2>
+    <p>{{ total_results }} results across {{ type_counts|length }} result types &mdash;
+       {{ domains|length }} domain{{ 's' if domains|length > 1 else '' }} in scope</p>
+</hgroup>
+
+<details open>
+    <summary><strong>Result Coverage</strong></summary>
+    <div class="type-grid">
+    {% for tc in type_counts %}
+        <div class="type-item">
+            <span>{{ tc.result_type }}</span>
+            <span class="count">{{ tc.cnt }}</span>
+        </div>
+    {% endfor %}
+    </div>
+</details>
+
+<hr>
+
+<h3>Analysis Passes</h3>
+<p class="muted">Each pass is a focused analytical lens. Run them in order — later passes build on earlier findings.
+Copy the prompt and paste it into a Claude conversation with the instruction to analyze.</p>
+
+{% for num, p in passes.items() %}
+<div class="pass-card" id="pass-{{ num }}">
+    <h3>Pass {{ num }}: {{ p.name }}</h3>
+    <div class="desc">{{ p.description }}</div>
+    <div class="actions">
+        <button class="btn-sm" onclick="loadPass({{ num }}, this)">Load Prompt</button>
+        <button class="btn-sm outline" onclick="copyPass({{ num }})" id="copy-btn-{{ num }}" style="display:none">
+            Copy to Clipboard
+        </button>
+        <span class="copied-toast" id="toast-{{ num }}">Copied!</span>
+    </div>
+    <div class="prompt-box" id="prompt-{{ num }}"></div>
+</div>
+{% endfor %}
+
+<hr>
+
+<h3>Full Triage Data (JSON)</h3>
+<p class="muted">Raw per-host correlated data for custom analysis.</p>
+<div class="actions" style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+    <a href="/api/recon/triage/{{ target.id }}" target="_blank" role="button" class="btn-sm outline">
+        View JSON
+    </a>
+</div>
+
+<p><a href="/recon/targets/{{ target.id }}">&larr; Back to target</a></p>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const passData = {};
+
+async function loadPass(num, btn) {
+    const box = document.getElementById(`prompt-${num}`);
+    const copyBtn = document.getElementById(`copy-btn-${num}`);
+
+    if (box.classList.contains('visible')) {
+        box.classList.remove('visible');
+        copyBtn.style.display = 'none';
+        btn.textContent = 'Load Prompt';
+        return;
+    }
+
+    btn.textContent = 'Loading...';
+    btn.disabled = true;
+
+    try {
+        const resp = await fetch(`/api/recon/triage/{{ target.id }}/pass/${num}`);
+        const data = await resp.json();
+        passData[num] = data.prompt;
+        box.textContent = data.prompt;
+        box.classList.add('visible');
+        copyBtn.style.display = 'inline-block';
+        btn.textContent = 'Hide Prompt';
+    } catch (e) {
+        box.textContent = `Error loading pass: ${e.message}`;
+        box.classList.add('visible');
+        btn.textContent = 'Retry';
+    }
+    btn.disabled = false;
+}
+
+async function copyPass(num) {
+    const text = passData[num];
+    if (!text) return;
+    try {
+        await navigator.clipboard.writeText(text);
+        const toast = document.getElementById(`toast-${num}`);
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2000);
+    } catch (e) {
+        // Fallback for non-HTTPS
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        const toast = document.getElementById(`toast-${num}`);
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+}
+</script>
+{% endblock %}

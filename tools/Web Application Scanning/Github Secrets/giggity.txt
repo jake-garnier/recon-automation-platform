@@ -1,0 +1,10 @@
+giggity
+=======
+
+URL: https://github.com/needmorecowbell/giggity
+
+CLI tool to investigate GitHub organizations and their repositories. Extracts useful information about an organization's repos, members, and potential secrets.
+
+Usage: GitHub organization OSINT.
+Input: GitHub organization name.
+Output: Org analysis, repo details, potential issues.

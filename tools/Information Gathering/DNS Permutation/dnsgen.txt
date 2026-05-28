@@ -1,0 +1,13 @@
+dnsgen
+======
+
+URL: https://github.com/ProjectAnte/dnsgen
+
+Generates combinations of domain names based on provided input. Creates permutations using wordlists and existing subdomains to discover new ones.
+
+Usage: Generate subdomain permutations for brute-forcing.
+Input: List of known subdomains.
+Output: Generated permutations to pipe into a resolver.
+
+Example:
+  cat subdomains.txt | dnsgen - | massdns -r resolvers.txt

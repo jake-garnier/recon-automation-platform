@@ -1,0 +1,10 @@
+Virtual-host-discovery
+======================
+
+URL: https://secapps.com/vulndb/virtual-host-discovery
+
+Tool/technique for discovering virtual hosts configured on web servers by manipulating the Host header. Useful for finding additional attack surface on shared hosting.
+
+Usage: Virtual host enumeration on target servers.
+Input: Target IP + hostname candidates.
+Output: Valid virtual hosts.

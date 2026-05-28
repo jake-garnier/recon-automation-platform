@@ -1,0 +1,14 @@
+Findomain
+=========
+
+URL: https://github.com/Edu4rdSHL/findomain
+
+Cross-platform subdomain enumerator written in Rust. Uses certificate transparency logs and APIs for fast passive enumeration. Supports monitoring mode for continuous subdomain discovery with alerts.
+
+Usage: Fast passive subdomain enumeration and monitoring.
+Input: Domain names.
+Output: List of subdomains.
+
+Example:
+  findomain -t example.com
+  findomain -t example.com -o

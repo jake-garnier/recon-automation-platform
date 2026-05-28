@@ -1,0 +1,10 @@
+vhost-brute
+===========
+
+URL: https://github.com/gwen001/vhost-brute
+
+Virtual host brute-force tool. Sends HTTP requests with different Host headers to discover virtual hosts configured on a web server.
+
+Usage: Discover hidden virtual hosts on a target IP/server.
+Input: Target IP + wordlist of potential hostnames.
+Output: Discovered virtual hosts with response details.

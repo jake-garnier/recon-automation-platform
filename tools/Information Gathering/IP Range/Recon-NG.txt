@@ -1,0 +1,16 @@
+Recon-NG
+========
+
+URL: https://github.com/lanmaster53/recon-ng
+
+Full-featured web reconnaissance framework written in Python. Modular architecture with marketplace of modules for OSINT gathering. Supports DNS, contacts, credentials, and more.
+
+Usage: Comprehensive OSINT framework for target reconnaissance.
+Input: Seed domains, companies, contacts.
+Output: Structured recon data in built-in database.
+
+Example:
+  recon-ng
+  > marketplace install all
+  > modules load recon/domains-hosts/...
+  > run

@@ -1,0 +1,16 @@
+Subfinder
+=========
+
+URL: https://github.com/projectdiscovery/subfinder
+
+Fast passive subdomain discovery tool by ProjectDiscovery. Queries multiple sources (Censys, Shodan, VirusTotal, SecurityTrails, etc.) without active probing. Written in Go, lightweight and fast.
+
+Usage: Passive subdomain enumeration.
+Input: Domain names or domain list file.
+Output: Plain text list of subdomains.
+
+Example:
+  subfinder -d example.com
+  subfinder -dL domains.txt -all -o subdomains.txt
+
+Note: Already integrated in the recon pipeline (first tool in the chain).

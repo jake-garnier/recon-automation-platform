@@ -1,0 +1,10 @@
+htpwdScan
+=========
+
+URL: https://github.com/lijiejie/htpwdScan
+
+HTTP password brute-forcer. Tests for weak/default credentials on web login forms.
+
+Usage: Brute-force HTTP authentication.
+Input: Target URL + username/password lists.
+Output: Valid credential pairs.

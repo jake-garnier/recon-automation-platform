@@ -1,0 +1,15 @@
+ffuf
+====
+
+URL: https://github.com/ffuf/ffuf
+
+Fast web fuzzer written in Go. General-purpose fuzzing tool for directory/file discovery, virtual host discovery, parameter fuzzing, and more. Very fast and flexible.
+
+Usage: Directory brute-forcing, parameter fuzzing, virtual host discovery.
+Input: Target URL with FUZZ keyword + wordlist.
+Output: Discovered paths/parameters with response details.
+
+Example:
+  ffuf -u https://example.com/FUZZ -w wordlist.txt
+  ffuf -u https://example.com/FUZZ -w wordlist.txt -fc 404
+  ffuf -u https://example.com/?FUZZ=value -w params.txt

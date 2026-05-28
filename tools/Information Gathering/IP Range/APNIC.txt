@@ -1,0 +1,10 @@
+APNIC
+=====
+
+URL: https://www.apnic.net/about-apnic/whois_search/
+
+Asia Pacific Network Information Centre — regional internet registry for the Asia-Pacific region. WHOIS database for IP and ASN lookups.
+
+Usage: IP/ASN ownership lookup for Asia-Pacific addresses.
+Input: IP address or ASN.
+Output: Network allocation details, organization info.

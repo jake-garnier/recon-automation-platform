@@ -1,0 +1,14 @@
+httprobe
+========
+
+URL: https://github.com/tomnomnom/httprobe
+
+Tool by tomnomnom that probes a list of domains to find working HTTP/HTTPS servers. Simple and fast.
+
+Usage: Find which domains have live web servers.
+Input: List of domains (stdin).
+Output: URLs with working HTTP/HTTPS.
+
+Example:
+  cat subdomains.txt | httprobe
+  cat subdomains.txt | httprobe -p http:8080 -p https:8443

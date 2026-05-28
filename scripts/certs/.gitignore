@@ -1,0 +1,4 @@
+# Caido CA private-key bundles must NOT be committed (the .pem cert is public + safe)
+*.p12
+*.pfx
+*.key

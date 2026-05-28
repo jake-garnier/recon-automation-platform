@@ -1,0 +1,10 @@
+sandcastle
+==========
+
+URL: https://github.com/0xSearches/sandcastle
+
+AWS S3 bucket enumeration tool. Uses target-related keywords to discover S3 buckets with various permutations.
+
+Usage: S3 bucket discovery via keyword permutations.
+Input: Target name/keywords.
+Output: Discovered S3 buckets with access status.

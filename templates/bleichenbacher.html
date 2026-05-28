@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+{% block title %}Bleichenbacher FFF Oracle — Live Dashboard{% endblock %}
+{% block content %}
+
+<style>
+    .combined-banner {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: var(--pico-card-background-color);
+        border-left: 4px solid var(--sev-high);
+        border-radius: 6px;
+    }
+    .combined-banner .stat {
+        text-align: center;
+    }
+    .combined-banner .stat small {
+        display: block;
+        opacity: 0.7;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .combined-banner .stat .v {
+        font-size: 1.6rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .instances-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    @media (min-width: 1100px) {
+        .instances-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+    .instance-card {
+        border: 1px solid var(--pico-muted-border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        background: var(--pico-card-background-color);
+    }
+    .instance-card.offline {
+        opacity: 0.6;
+        border-color: var(--sev-critical);
+    }
+    .instance-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--pico-muted-border-color);
+    }
+    .instance-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+    }
+    .instance-header .egress {
+        font-family: monospace;
+        font-size: 0.75rem;
+        opacity: 0.65;
+    }
+    .instance-header .status-badge {
+        padding: 0.15em 0.55em;
+        border-radius: 4px;
+        font-size: 0.75em;
+        font-weight: 600;
+    }
+    .instance-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+    .instance-stats .mini-stat {
+        text-align: center;
+        padding: 0.5rem;
+        background: rgba(255,255,255,0.02);
+        border-radius: 4px;
+    }
+    .instance-stats .mini-stat small {
+        display: block;
+        opacity: 0.6;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+    }
+    .instance-stats .mini-stat .v {
+        font-size: 1.1rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+    .instance-meta {
+        font-size: 0.8rem;
+        margin-top: 0.5rem;
+    }
+    .instance-meta code {
+        word-break: break-all;
+        font-size: 0.75em;
+    }
+    .instance-log {
+        max-height: 260px;
+        overflow-y: auto;
+        font-size: 0.72rem;
+        background: var(--pico-background-color);
+        padding: 0.6rem;
+        border-radius: 4px;
+        margin-top: 0.5rem;
+        white-space: pre-wrap;
+    }
+    .instance-log.empty {
+        opacity: 0.5;
+        font-style: italic;
+    }
+</style>
+
+<h1>Bleichenbacher FFF Oracle — Live</h1>
+<p>Parallel Bleichenbacher attacks against <code>draco.anduril.com/authx/saml/acs/internal</code> from multiple egress IPs.</p>
+
+<!-- Combined cross-instance banner -->
+<div class="combined-banner">
+    <div class="stat">
+        <small>Active Runners</small>
+        <div class="v" id="cb-active">—</div>
+    </div>
+    <div class="stat">
+        <small>Total Rate</small>
+        <div class="v" id="cb-rate">—</div>
+    </div>
+    <div class="stat">
+        <small>Total HTTP</small>
+        <div class="v" id="cb-http">—</div>
+    </div>
+    <div class="stat">
+        <small>Total Conformant</small>
+        <div class="v" id="cb-conform" style="color: var(--sev-critical)">—</div>
+    </div>
+    <div class="stat">
+        <small>Total s Tested</small>
+        <div class="v" id="cb-s">—</div>
+    </div>
+    <div class="stat">
+        <small>Any s1 Found?</small>
+        <div class="v" id="cb-s1">—</div>
+    </div>
+</div>
+
+<!-- Per-instance cards — rendered dynamically -->
+<div class="instances-grid" id="instances-grid">
+    <p><em>Loading runner state...</em></p>
+</div>
+
+<details style="margin-top:1.5rem">
+    <summary><strong>Attack Parameters</strong></summary>
+    <table>
+        <tr><td>Target</td><td><code>draco.anduril.com/authx/saml/acs/internal</code></td></tr>
+        <tr><td>RSA</td><td>2048-bit, PKCS#1 v1.5</td></tr>
+        <tr><td>Oracle Type</td><td>FFF (Bardou et al. CRYPTO 2012) — probabilistic ~46% true-positive rate (measured 2026-04-11)</td></tr>
+        <tr><td>Sampling</td><td>k=1 single-shot (optimal for bandwidth-bottlenecked probabilistic oracle)</td></tr>
+        <tr><td>Threads per runner</td><td>200 concurrent</td></tr>
+        <tr><td>Step 2a Hole Skipping</td><td>Enabled (Bardou §2.2 — ~8K queries saved up-front)</td></tr>
+        <tr><td>Parallelism</td><td>2 independent runners from distinct egress IPs (Kali homelab + Mac Studio). 1.5–1.7× speedup vs single runner.</td></tr>
+    </table>
+</details>
+
+<details style="margin-top:0.5rem">
+    <summary><strong>Previous Run — s1 Found (proof of attack correctness)</strong></summary>
+    <table>
+        <tr><td>s1</td><td><code>4,186,737</code></td></tr>
+        <tr><td>Queries</td><td>4,170,816</td></tr>
+        <tr><td>Time</td><td>6.51 hours</td></tr>
+        <tr><td>Rate</td><td>178 req/s</td></tr>
+        <tr><td>Result</td><td>87 intervals, 2017 bits — interval narrowing confirmed</td></tr>
+    </table>
+    <p><small>First documented Bleichenbacher step 2a completion against a real-world FFF oracle.
+    Process was killed before step 2b/2c could complete. c0 was lost (not persisted at the time).
+    Current runs are fully parallelized and persist state to disk.</small></p>
+</details>
+
+<script>
+const POLL_INTERVAL = 5000;
+
+function fmt(n) {
+    if (typeof n !== 'number') return '—';
+    return n.toLocaleString();
+}
+function fmtTime(h) {
+    if (typeof h !== 'number') return '—';
+    if (h < 1) return (h * 60).toFixed(1) + 'm';
+    if (h < 24) return h.toFixed(2) + 'h';
+    return (h / 24).toFixed(1) + 'd';
+}
+function fmtShort(s) {
+    if (!s) return '—';
+    if (s.length > 40) return s.substring(0, 20) + '…' + s.substring(s.length - 12);
+    return s;
+}
+
+async function fetchState() {
+    try {
+        const resp = await fetch('/api/bleichenbacher/status?_t=' + Date.now());
+        if (!resp.ok) return null;
+        return await resp.json();
+    } catch(e) { return null; }
+}
+
+function renderInstance(inst) {
+    const isAlive = inst.process_alive === true || inst.process_alive === 1;
+    const hasError = !!inst.error;
+    const phase = inst.phase || 'unknown';
+    const phaseBadge = phase === 's1_found' || phase === 'narrowing' ? 'badge-paused' :
+                       phase === 'complete' ? 'badge-open' :
+                       phase === 's2a' || phase === 'init' ? 'badge-paused' :
+                       phase === 'probing' || phase === 'waiting' ? 'badge-paused' :
+                       'badge-closed';
+    const aliveText = isAlive ? '● RUNNING' :
+                      hasError ? '● STOPPED' :
+                      inst.process_alive === false ? '● STALE' : '? UNKNOWN';
+    const aliveClass = isAlive ? 'badge-open' :
+                       hasError ? 'badge-closed' :
+                       inst.process_alive === false ? 'badge-closed' : 'badge-paused';
+
+    const stateAgeText = typeof inst.state_age_s === 'number' ?
+        (inst.state_age_s < 60 ? inst.state_age_s + 's ago' :
+         Math.floor(inst.state_age_s / 60) + 'm ago') : '—';
+
+    const rate = (inst.rate || 0).toFixed(0) + ' r/s';
+
+    // Progress estimate
+    const estimated_s1 = 7_300_000;
+    const sTested = inst.s_tested || 0;
+    const pct = Math.min(100, (sTested / estimated_s1) * 100);
+
+    const logHtml = (inst.log_lines && inst.log_lines.length > 0)
+        ? '<div class="instance-log">' + inst.log_lines.map(l => l.replace(/</g, '&lt;')).join('\n') + '</div>'
+        : '<div class="instance-log empty">(no log for this runner — state only)</div>';
+
+    return `
+        <div class="instance-card ${isAlive ? '' : 'offline'}">
+            <div class="instance-header">
+                <div>
+                    <h3>${inst.label || inst.runner}</h3>
+                    <div class="egress">egress: ${inst.egress_ip || '—'} · state ${stateAgeText}</div>
+                </div>
+                <div>
+                    <span class="badge ${phaseBadge}">${phase}</span>
+                    <span class="badge ${aliveClass}">${aliveText}</span>
+                </div>
+            </div>
+            ${hasError ? `<p style="color:var(--sev-critical);font-size:0.85em">⚠ ${inst.error}</p>` : ''}
+            <div class="instance-stats">
+                <div class="mini-stat"><small>Rate</small><div class="v">${rate}</div></div>
+                <div class="mini-stat"><small>HTTP</small><div class="v">${fmt(inst.http_count)}</div></div>
+                <div class="mini-stat"><small>Elapsed</small><div class="v">${fmtTime(inst.elapsed_h)}</div></div>
+                <div class="mini-stat"><small>s Tested</small><div class="v">${fmt(inst.s_tested)}</div></div>
+                <div class="mini-stat"><small>Conform</small><div class="v" style="color:var(--sev-critical)">${fmt(inst.conform_count)}</div></div>
+                <div class="mini-stat"><small>Skip %</small><div class="v">${typeof inst.skip_pct === 'number' ? inst.skip_pct.toFixed(1) + '%' : '—'}</div></div>
+            </div>
+            <progress value="${pct}" max="100" style="width:100%"></progress>
+            <small>${fmt(sTested)} tested / ~${fmt(estimated_s1)} (${pct.toFixed(1)}%)</small>
+            <div class="instance-meta">
+                <div><strong>Target key:</strong> <code>${fmtShort(inst.target_key_hex)}</code></div>
+                <div><strong>c0:</strong> <code>${fmtShort(inst.c0 || '')}</code></div>
+                ${inst.iteration ? `<div><strong>Iter:</strong> ${inst.iteration} · <strong>Intervals:</strong> ${inst.intervals || '—'}</div>` : ''}
+            </div>
+            ${logHtml}
+        </div>
+    `;
+}
+
+async function update() {
+    const data = await fetchState();
+    if (!data) {
+        document.getElementById('instances-grid').innerHTML =
+            '<p style="color:var(--sev-critical)">Failed to fetch status</p>';
+        return;
+    }
+
+    // Combined banner
+    const cb = data.combined || {};
+    document.getElementById('cb-active').textContent = (cb.active_count || 0) + ' / ' + (data.instances || []).length;
+    document.getElementById('cb-rate').textContent = (cb.total_rate || 0) + ' r/s';
+    document.getElementById('cb-http').textContent = fmt(cb.total_http);
+    document.getElementById('cb-conform').textContent = fmt(cb.total_conform);
+    document.getElementById('cb-s').textContent = fmt(cb.total_s_tested);
+    const s1El = document.getElementById('cb-s1');
+    if (cb.any_complete) {
+        s1El.textContent = '★ COMPLETE';
+        s1El.style.color = 'var(--sev-low)';
+    } else if (cb.any_s1_found) {
+        s1El.textContent = '✓ Found';
+        s1El.style.color = 'var(--sev-high)';
+    } else {
+        s1El.textContent = 'searching';
+        s1El.style.color = 'var(--pico-muted-color)';
+    }
+
+    // Per-instance grid
+    const instances = data.instances || [];
+    const gridEl = document.getElementById('instances-grid');
+    if (!instances.length) {
+        gridEl.innerHTML = '<p><em>No runners configured</em></p>';
+        return;
+    }
+    gridEl.innerHTML = instances.map(renderInstance).join('');
+}
+
+setInterval(update, POLL_INTERVAL);
+update();
+</script>
+{% endblock %}

@@ -1,0 +1,13 @@
+dnsprobe
+========
+
+URL: https://github.com/projectdiscovery/dnsprobe
+
+DNS resolution tool by ProjectDiscovery. Performs multiple DNS queries for a list of subdomains. Fast bulk resolution written in Go.
+
+Usage: Bulk DNS resolution of subdomains.
+Input: List of subdomains.
+Output: Resolved IPs and DNS records.
+
+Example:
+  cat subdomains.txt | dnsprobe

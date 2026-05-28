@@ -1,0 +1,123 @@
+id: rate-limit-absence-auth
+
+info:
+  name: Missing Rate Limiting on Authentication Endpoints
+  author: custom
+  severity: medium
+  description: |
+    Sends 10 rapid identical requests to authentication-related endpoints
+    and checks if all succeed without a 429 Too Many Requests response.
+    Missing rate limiting enables credential stuffing, brute force attacks,
+    and OTP bypass.
+  tags: rate-limit,auth,brute-force,business-logic
+
+http:
+  # Login endpoints
+  - raw:
+      - |
+        POST {{Path}} HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+
+        {"username":"ratelimit_test@test.com","password":"TestPassword123!","email":"ratelimit_test@test.com"}
+      - |
+        POST {{Path}} HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+
+        {"username":"ratelimit_test@test.com","password":"TestPassword123!","email":"ratelimit_test@test.com"}
+      - |
+        POST {{Path}} HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+
+        {"username":"ratelimit_test@test.com","password":"TestPassword123!","email":"ratelimit_test@test.com"}
+      - |
+        POST {{Path}} HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+
+        {"username":"ratelimit_test@test.com","password":"TestPassword123!","email":"ratelimit_test@test.com"}
+      - |
+        POST {{Path}} HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+
+        {"username":"ratelimit_test@test.com","password":"TestPassword123!","email":"ratelimit_test@test.com"}
+      - |
+        POST {{Path}} HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+
+        {"username":"ratelimit_test@test.com","password":"TestPassword123!","email":"ratelimit_test@test.com"}
+      - |
+        POST {{Path}} HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+
+        {"username":"ratelimit_test@test.com","password":"TestPassword123!","email":"ratelimit_test@test.com"}
+      - |
+        POST {{Path}} HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+
+        {"username":"ratelimit_test@test.com","password":"TestPassword123!","email":"ratelimit_test@test.com"}
+      - |
+        POST {{Path}} HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+
+        {"username":"ratelimit_test@test.com","password":"TestPassword123!","email":"ratelimit_test@test.com"}
+      - |
+        POST {{Path}} HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+
+        {"username":"ratelimit_test@test.com","password":"TestPassword123!","email":"ratelimit_test@test.com"}
+
+    payloads:
+      Path:
+        - /login
+        - /api/login
+        - /api/auth/login
+        - /api/v1/auth/login
+        - /api/v1/login
+        - /signin
+        - /api/signin
+        - /auth/login
+        - /api/authenticate
+        - /forgot-password
+        - /api/forgot-password
+        - /api/password/reset
+        - /api/v1/password/reset
+        - /api/auth/forgot-password
+        - /api/otp/verify
+        - /api/2fa/verify
+        - /api/mfa/verify
+        - /api/verify-otp
+        - /api/auth/otp
+
+    attack: sniper
+    req-condition: true
+
+    matchers-condition: and
+    matchers:
+      # None of the 10 requests returned 429
+      - type: dsl
+        dsl:
+          - "status_code_1 != 429 && status_code_2 != 429 && status_code_3 != 429 && status_code_4 != 429 && status_code_5 != 429 && status_code_6 != 429 && status_code_7 != 429 && status_code_8 != 429 && status_code_9 != 429 && status_code_10 != 429"
+
+      # At least the first request got a real response (not 404/405)
+      - type: dsl
+        dsl:
+          - "status_code_1 != 404 && status_code_1 != 405 && status_code_1 != 501"

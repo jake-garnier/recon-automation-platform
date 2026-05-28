@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Oracle Pipeline{% endblock %}
+{% block content %}
+
+<h1>Cryptographic Oracle Pipeline</h1>
+<p>Hunt for Bleichenbacher, Manger, ROBOT, XML-Enc, JWT/JWE, ROCA, Lucky 13, BREACH, and
+related cryptographic oracle vulnerabilities. See
+<a href="https://github.com/jake-garnier/obsidian-vault/blob/main/hackerone-bounties/03-Techniques/oracle-attacks-taxonomy.md">oracle-attacks-taxonomy</a>
+for background.</p>
+
+<article>
+    <header><strong>Start a new oracle pipeline</strong></header>
+
+    <form id="start-form" onsubmit="event.preventDefault(); startOraclePipeline()">
+        <fieldset>
+            <legend>Target source</legend>
+
+            <label>
+                <input type="radio" name="source" value="program" checked
+                       onchange="toggleSource()"> From H1 program
+            </label>
+            <label>
+                <input type="radio" name="source" value="custom" onchange="toggleSource()">
+                Custom domain list
+            </label>
+        </fieldset>
+
+        <div id="program-section">
+            <label>
+                Program
+                <select id="program-select" name="program">
+                    <option value="">— select program —</option>
+                    {% for p in programs %}
+                    <option value="{{ p.handle }}" data-scopes="{{ p.scope_count }}">
+                        {{ p.handle }} ({{ p.scope_count }} scopes)
+                    </option>
+                    {% endfor %}
+                </select>
+            </label>
+        </div>
+
+        <div id="custom-section" style="display:none">
+            <label>
+                Domains (one per line)
+                <textarea id="custom-domains" rows="4" placeholder="example.com&#10;api.example.com&#10;auth.example.com"></textarea>
+            </label>
+            <label>
+                Target name (for file organization)
+                <input type="text" id="custom-name" placeholder="my-oracle-run">
+            </label>
+        </div>
+
+        <button type="submit">Start Oracle Pipeline</button>
+        <small id="start-status"></small>
+    </form>
+</article>
+
+<h2>Recent oracle pipeline runs</h2>
+<div id="runs-container">
+    <p><em>Loading...</em></p>
+</div>
+
+<script>
+function toggleSource() {
+    const src = document.querySelector('input[name="source"]:checked').value;
+    document.getElementById('program-section').style.display = src === 'program' ? 'block' : 'none';
+    document.getElementById('custom-section').style.display = src === 'custom' ? 'block' : 'none';
+}
+
+async function startOraclePipeline() {
+    const src = document.querySelector('input[name="source"]:checked').value;
+    const statusEl = document.getElementById('start-status');
+    statusEl.textContent = 'Starting...';
+    statusEl.style.color = 'var(--pico-muted-color)';
+
+    const body = {};
+    if (src === 'program') {
+        const handle = document.getElementById('program-select').value;
+        if (!handle) { statusEl.textContent = 'Pick a program first.'; return; }
+        body.program_handle = handle;
+    } else {
+        const domains = document.getElementById('custom-domains').value
+            .split('\n').map(s => s.trim()).filter(Boolean);
+        const name = document.getElementById('custom-name').value.trim();
+        if (!domains.length) { statusEl.textContent = 'Enter at least one domain.'; return; }
+        if (!name) { statusEl.textContent = 'Enter a target name.'; return; }
+        body.domains = domains;
+        body.target_name = name;
+    }
+
+    try {
+        const resp = await fetch('/api/oracle-pipeline/start', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(body),
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+            statusEl.textContent = 'Error: ' + (data.error || 'unknown');
+            statusEl.style.color = 'var(--sev-critical)';
+            return;
+        }
+        statusEl.textContent = 'Started pipeline #' + data.pipeline_id + ' — refreshing...';
+        statusEl.style.color = 'var(--sev-low)';
+        setTimeout(loadRuns, 500);
+    } catch (e) {
+        statusEl.textContent = 'Network error: ' + e;
+        statusEl.style.color = 'var(--sev-critical)';
+    }
+}
+
+async function loadRuns() {
+    try {
+        const resp = await fetch('/api/oracle-pipeline/list');
+        const data = await resp.json();
+        const container = document.getElementById('runs-container');
+        if (!data.runs || !data.runs.length) {
+            container.innerHTML = '<p><em>No oracle pipelines yet. Start one above.</em></p>';
+            return;
+        }
+        const rows = data.runs.map(r => {
+            const status_color = r.phase_status === 'running' ? 'var(--sev-high)'
+                : r.phase_status === 'completed' ? 'var(--sev-low)'
+                : r.phase_status === 'failed' ? 'var(--sev-critical)'
+                : 'var(--pico-muted-color)';
+            return `
+                <tr>
+                    <td><a href="/oracle-pipeline/${r.pipeline_id}">#${r.pipeline_id}</a></td>
+                    <td>${r.target_name || '—'}</td>
+                    <td>${r.program_handle || '—'}</td>
+                    <td style="color:${status_color}"><strong>${r.phase_status}</strong></td>
+                    <td>Phase ${r.current_phase}/${r.max_phase} — ${r.phase_name || ''}</td>
+                    <td>${r.domains_count || 0} domains</td>
+                    <td>${r.total_results || 0} results</td>
+                    <td>${r.created_at || ''}</td>
+                </tr>
+            `;
+        }).join('');
+        container.innerHTML = `
+            <table>
+                <thead><tr>
+                    <th>ID</th><th>Target</th><th>Program</th><th>Status</th><th>Phase</th>
+                    <th>Scope</th><th>Results</th><th>Started</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
+    } catch (e) {
+        document.getElementById('runs-container').innerHTML =
+            '<p style="color:var(--sev-critical)">Failed to load runs: ' + e + '</p>';
+    }
+}
+
+loadRuns();
+setInterval(loadRuns, 10000);
+</script>
+{% endblock %}

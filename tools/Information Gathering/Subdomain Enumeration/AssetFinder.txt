@@ -1,0 +1,14 @@
+AssetFinder
+===========
+
+URL: https://github.com/tomnomnom/assetfinder
+
+Lightweight tool by tomnomnom that finds domains and subdomains related to a given domain. Queries certificate transparency logs, DNS datasets, and web archives.
+
+Usage: Quick passive subdomain/asset discovery.
+Input: Domain name (stdin or argument).
+Output: Plain text list of related domains.
+
+Example:
+  assetfinder example.com
+  assetfinder --subs-only example.com

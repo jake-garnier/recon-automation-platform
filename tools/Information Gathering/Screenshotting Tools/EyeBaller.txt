@@ -1,0 +1,10 @@
+EyeBaller
+=========
+
+URL: https://github.com/BishopFox/eyeballer
+
+Machine learning tool by Bishop Fox that analyzes screenshots to identify interesting pages (custom 404s, login pages, old-looking sites). Helps triage large screenshot datasets.
+
+Usage: AI-powered triage of web screenshots.
+Input: Directory of screenshots.
+Output: Classification of interesting vs boring pages.

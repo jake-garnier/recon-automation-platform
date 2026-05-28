@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — H1 Bounty Browser{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="stats-grid">
+    <article class="stat-card">
+        <div class="number">{{ stats.total_programs }}</div>
+        <div class="label">Total Programs</div>
+    </article>
+    <article class="stat-card">
+        <div class="number">{{ stats.bounty_programs }}</div>
+        <div class="label">Bounty Programs</div>
+    </article>
+    <article class="stat-card">
+        <div class="number">{{ stats.open_programs }}</div>
+        <div class="label">Open Programs</div>
+    </article>
+    <article class="stat-card">
+        <div class="number">{{ stats.bounty_scopes }}</div>
+        <div class="label">Bounty Scopes</div>
+    </article>
+</div>
+
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+    <div>
+        <h3>Asset Types</h3>
+        <table>
+            <thead>
+                <tr><th>Type</th><th style="text-align:right">Count</th><th style="width:40%"></th></tr>
+            </thead>
+            <tbody>
+                {% set max_count = asset_types[0][1] if asset_types else 1 %}
+                {% for row in asset_types %}
+                <tr>
+                    <td class="mono">{{ row[0] }}</td>
+                    <td style="text-align:right">{{ row[1] }}</td>
+                    <td><span class="bar-fill" style="width:{{ (row[1] / max_count * 100)|int }}%"></span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div>
+        <h3>Top Programs by Scope Count</h3>
+        <table>
+            <thead>
+                <tr><th>Program</th><th>State</th><th style="text-align:right">Scopes</th></tr>
+            </thead>
+            <tbody>
+                {% for row in top_programs %}
+                <tr>
+                    <td>
+                        <a href="/programs/{{ row['handle'] }}">{{ row['name'] or row['handle'] }}</a>
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ row['submission_state'] }}">{{ row['submission_state'] }}</span>
+                    </td>
+                    <td style="text-align:right">{{ row['scope_count'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p><a href="/programs">View all programs &rarr;</a></p>
+    </div>
+</div>
+{% endblock %}

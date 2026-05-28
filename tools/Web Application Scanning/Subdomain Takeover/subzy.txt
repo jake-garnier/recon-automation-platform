@@ -1,0 +1,15 @@
+subzy
+=====
+
+URL: https://github.com/LukaSikic/subzy
+
+Subdomain takeover vulnerability checker. Tests subdomains for dangling DNS records pointing to decommissioned services (GitHub Pages, Heroku, AWS, etc.).
+
+Usage: Check subdomains for takeover vulnerabilities.
+Input: List of subdomains.
+Output: Vulnerable subdomains with service type.
+
+Example:
+  subzy run --targets subdomains.txt
+
+Note: Already integrated in the recon pipeline.

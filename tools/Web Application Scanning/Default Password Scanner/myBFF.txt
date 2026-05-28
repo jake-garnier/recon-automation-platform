@@ -1,0 +1,10 @@
+myBFF
+=====
+
+URL: https://github.com/rapid7/myBFF
+
+Brute Force Framework by Rapid7. Web-based tool for managing and executing brute-force attacks across multiple protocols.
+
+Usage: Multi-protocol brute-force management.
+Input: Target services + credential lists.
+Output: Valid credentials.

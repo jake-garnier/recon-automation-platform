@@ -1,0 +1,13 @@
+OneForAll
+=========
+
+URL: https://github.com/shmilylty/OneForAll
+
+Comprehensive subdomain collection tool written in Python. Claims to be the most powerful subdomain integration tool — collects from certificate transparency, DNS datasets, DNS queries, threat intelligence, search engines, and more. Includes subdomain takeover detection.
+
+Usage: All-in-one subdomain enumeration.
+Input: Domain names.
+Output: CSV/JSON with subdomains and metadata.
+
+Example:
+  python3 oneforall.py --target example.com run

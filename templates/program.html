@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{{ program['name'] or program['handle'] }} — H1 Bounty Browser{% endblock %}
+
+{% block content %}
+<hgroup>
+    <h1>{{ program['name'] or program['handle'] }}</h1>
+    <p>
+        <span class="mono">{{ program['handle'] }}</span>
+        &middot;
+        <span class="badge badge-{{ program['submission_state'] }}">{{ program['submission_state'] }}</span>
+        &middot;
+        <a href="{{ program['url'] }}" target="_blank" rel="noopener">View on HackerOne &nearr;</a>
+    </p>
+</hgroup>
+
+<div class="stats-grid" style="margin-bottom:1.5rem;">
+    <article class="stat-card">
+        <div class="number">{{ scopes|length }}</div>
+        <div class="label">Bounty Scopes</div>
+    </article>
+    <article class="stat-card">
+        <div class="number">{{ program['offers_bounties'] and 'Yes' or 'No' }}</div>
+        <div class="label">Offers Bounties</div>
+    </article>
+    {% if program['started_accepting_at'] %}
+    <article class="stat-card">
+        <div class="number" style="font-size:1.2rem;">{{ program['started_accepting_at'][:10] }}</div>
+        <div class="label">Started Accepting</div>
+    </article>
+    {% endif %}
+</div>
+
+<h3>In-Scope Assets</h3>
+<input type="text" id="scope-filter" placeholder="Filter scopes..." style="max-width:400px;">
+
+<table id="scope-table">
+    <thead>
+        <tr>
+            <th>Type</th>
+            <th>Asset</th>
+            <th>Severity</th>
+            <th>Notes</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in scopes %}
+        <tr>
+            <td class="mono">{{ s['asset_type'] }}</td>
+            <td>{{ s['asset_identifier'] }}</td>
+            <td>
+                {% if s['max_severity'] %}
+                <span class="sev-{{ s['max_severity'] }}">{{ s['max_severity'] }}</span>
+                {% else %}
+                —
+                {% endif %}
+            </td>
+            <td class="muted">{{ s['instruction'] or '' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No bounty-eligible scopes.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if program['policy'] %}
+<details style="margin-top:2rem;">
+    <summary><h3 style="display:inline;">Program Policy</h3></summary>
+    <article id="policy-content"></article>
+    <noscript>
+        <pre style="white-space:pre-wrap;">{{ program['policy'] }}</pre>
+    </noscript>
+</details>
+{% endif %}
+
+<p style="margin-top:2rem;"><a href="/programs">&larr; Back to programs</a></p>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    // Client-side scope filtering
+    const filter = document.getElementById('scope-filter');
+    const rows = document.querySelectorAll('#scope-table tbody tr');
+    filter.addEventListener('input', () => {
+        const q = filter.value.toLowerCase();
+        rows.forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+    });
+
+    // Render policy markdown
+    const policyRaw = {{ program['policy']|tojson }};
+    if (policyRaw) {
+        document.getElementById('policy-content').innerHTML = marked.parse(policyRaw);
+    }
+</script>
+{% endblock %}

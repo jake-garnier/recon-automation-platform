@@ -1,0 +1,10 @@
+Certificate Transparency
+========================
+
+URL: https://www.certificate-transparency.org/
+
+Google's Certificate Transparency project. An open framework for monitoring and auditing SSL/TLS certificates. CT logs are the data source used by tools like crt.sh, Subfinder, and Amass.
+
+Usage: Understanding the CT ecosystem. Reference for building custom CT monitoring.
+Input: N/A (ecosystem/standard).
+Output: N/A.

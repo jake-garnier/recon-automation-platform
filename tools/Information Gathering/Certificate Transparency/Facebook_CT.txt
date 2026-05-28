@@ -1,0 +1,10 @@
+Facebook CT
+===========
+
+URL: https://developers.facebook.com/tools/ct/search/
+
+Facebook's Certificate Transparency search tool. Searches Facebook's CT log dataset for certificates matching a domain.
+
+Usage: Search for certificates in Facebook's CT dataset.
+Input: Domain name via web UI.
+Output: Matching certificates.

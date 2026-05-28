@@ -1,0 +1,13 @@
+massdns
+=======
+
+URL: https://github.com/blechschmidt/massdns
+
+High-performance DNS stub resolver. Capable of resolving billions of DNS records per run using thousands of concurrent lookups. Essential for large-scale subdomain enumeration.
+
+Usage: Mass DNS resolution at scale.
+Input: List of domains + list of resolvers.
+Output: Resolved DNS records.
+
+Example:
+  massdns -r resolvers.txt -t A -o S domains.txt > results.txt

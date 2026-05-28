@@ -1,0 +1,12 @@
+BinaryEdge
+==========
+
+URL: https://www.binaryedge.io/
+
+Internet scanning platform similar to Shodan/Censys. Collects data on exposed services, vulnerabilities, and misconfigurations across the internet.
+
+Usage: Search for target infrastructure and exposed services.
+Input: IP, domain, or search queries via web UI/API.
+Output: Open ports, services, vulnerabilities, data leaks.
+
+Note: Free tier available with limited queries.

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Programs — H1 Bounty Browser{% endblock %}
+
+{% block content %}
+<h1>Bounty Programs</h1>
+
+<form method="GET" action="/programs" class="filter-bar">
+    <label>
+        Search
+        <input type="text" name="q" value="{{ q }}" placeholder="Search programs...">
+    </label>
+    <label>
+        State
+        <select name="state">
+            <option value="all" {{ 'selected' if state == 'all' }}>All</option>
+            <option value="open" {{ 'selected' if state == 'open' }}>Open</option>
+            <option value="paused" {{ 'selected' if state == 'paused' }}>Paused</option>
+        </select>
+    </label>
+    <label>
+        Asset Type
+        <select name="type">
+            <option value="all" {{ 'selected' if asset_type == 'all' }}>All Types</option>
+            {% for t in asset_types %}
+            <option value="{{ t }}" {{ 'selected' if asset_type == t }}>{{ t }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>
+        Signal
+        <select name="signal">
+            <option value="all" {{ 'selected' if signal == 'all' }}>All</option>
+            <option value="none" {{ 'selected' if signal == 'none' }}>No Signal</option>
+            <option value="required" {{ 'selected' if signal == 'required' }}>Signal Required</option>
+            <option value="unknown" {{ 'selected' if signal == 'unknown' }}>Unknown</option>
+        </select>
+    </label>
+    <button type="submit">Filter</button>
+</form>
+
+<p class="muted">
+    Showing {{ ((page - 1) * 50) + 1 }}–{{ [page * 50, total]|min }} of {{ total }} programs
+</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Handle</th>
+            <th>Name</th>
+            <th>State</th>
+            <th>Signal</th>
+            <th style="text-align:right">Scopes</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in programs %}
+        <tr>
+            <td class="mono"><a href="/programs/{{ p['handle'] }}">{{ p['handle'] }}</a></td>
+            <td>{{ p['name'] or '—' }}</td>
+            <td><span class="badge badge-{{ p['submission_state'] }}">{{ p['submission_state'] }}</span></td>
+            <td>{% if p['signal_required'] == 1 %}<span style="color:var(--pico-color-red-500)">Required</span>{% elif p['signal_required'] == 0 %}<span style="color:var(--pico-color-green-500)">None</span>{% else %}—{% endif %}</td>
+            <td style="text-align:right">{{ p['scope_count'] }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No programs found.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="/programs?q={{ q }}&state={{ state }}&type={{ asset_type }}&page={{ page - 1 }}" role="button" class="outline">Previous</a>
+    {% endif %}
+    <span class="muted">Page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}
+    <a href="/programs?q={{ q }}&state={{ state }}&type={{ asset_type }}&page={{ page + 1 }}" role="button" class="outline">Next</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

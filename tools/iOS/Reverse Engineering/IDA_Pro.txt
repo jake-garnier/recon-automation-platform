@@ -1,0 +1,12 @@
+IDA Pro
+=======
+
+URL: https://www.hex-rays.com/products/ida/
+
+Industry-standard interactive disassembler and debugger. Supports analysis of binaries for virtually every processor architecture. Essential for reverse engineering compiled code.
+
+Usage: Binary reverse engineering, malware analysis, vulnerability research.
+Input: Binary executables (any architecture).
+Output: Disassembly, decompiled pseudocode, analysis.
+
+Note: Commercial software (expensive). Free version (IDA Free) available with limited features.

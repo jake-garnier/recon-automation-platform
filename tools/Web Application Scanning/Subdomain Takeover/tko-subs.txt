@@ -1,0 +1,10 @@
+tko-subs
+========
+
+URL: https://github.com/anshumanbh/tko-subs
+
+Subdomain takeover detection tool. Checks for dangling CNAME records and tests if the pointed-to service can be claimed.
+
+Usage: Detect subdomain takeover vulnerabilities.
+Input: List of subdomains.
+Output: Takeover-vulnerable subdomains.

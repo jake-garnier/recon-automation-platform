@@ -1,0 +1,15 @@
+Amass
+=====
+
+URL: https://github.com/OWASP/Amass
+
+OWASP's in-depth attack surface mapping and asset discovery tool. Uses DNS enumeration, web scraping, API integrations (VirusTotal, Censys, Shodan, etc.), and certificate transparency logs to discover subdomains. Supports active and passive enumeration modes.
+
+Usage: Subdomain discovery on target domains.
+Input: Domain names.
+Output: List of discovered subdomains with data source attribution.
+
+Example:
+  amass enum -d example.com
+  amass enum -passive -d example.com
+  amass enum -d example.com -o output.txt

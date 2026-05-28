@@ -1,0 +1,10 @@
+Clutch
+======
+
+URL: https://github.com/KJCracks/Clutch
+
+Tool for decrypting iOS applications on jailbroken devices. Dumps the decrypted IPA for further static analysis.
+
+Usage: Decrypt iOS app binaries for analysis.
+Input: Encrypted app on jailbroken device.
+Output: Decrypted IPA file.

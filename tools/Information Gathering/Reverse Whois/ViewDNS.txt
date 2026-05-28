@@ -1,0 +1,10 @@
+ViewDNS
+=======
+
+URL: https://viewdns.info/reversewhois/
+
+Free web tool for reverse WHOIS lookups. Find other domains registered by the same person or company.
+
+Usage: Reverse WHOIS lookup.
+Input: Registrant name, email, or keyword.
+Output: List of domains matching the query.

@@ -1,0 +1,16 @@
+[Unit]
+Description=Exit-node traffic stats server (tailnet only)
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/traffic-server.py
+Restart=on-failure
+RestartSec=10
+# Bind to tailnet IP only — refuse to start if tailscale0 isn't up yet
+Environment=TRAFFIC_BIND_IP=<EXIT_NODE_TS_IP>
+Environment=TRAFFIC_PORT=9090
+
+[Install]
+WantedBy=multi-user.target

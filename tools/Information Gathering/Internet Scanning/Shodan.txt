@@ -1,0 +1,16 @@
+Shodan
+======
+
+URL: https://shodan.io/
+
+The search engine for internet-connected devices. Indexes banners from services running on all internet-facing devices — web servers, IoT, databases, etc.
+
+Usage: Find target infrastructure, exposed services, IoT devices, known vulnerabilities.
+Input: Search queries (IP, domain, service, product, port, etc.).
+Output: Host info, open ports, service banners, known CVEs.
+
+Example (CLI):
+  shodan search hostname:example.com
+  shodan host 1.2.3.4
+
+Note: Free tier available. API key needed for CLI and programmatic access.

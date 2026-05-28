@@ -1,0 +1,10 @@
+AndroTickler
+============
+
+URL: https://github.com/ernw/AndroTickler
+
+Android app analysis and pentesting tool. Automates common Android security testing tasks — inspects APK, analyzes storage, checks for common vulnerabilities.
+
+Usage: Automated Android app security assessment.
+Input: APK file or installed app.
+Output: Security findings and analysis report.

@@ -1,0 +1,10 @@
+Sublert
+=======
+
+URL: https://github.com/yassineaboukir/sublert
+
+Certificate transparency log monitor that alerts on new subdomains. Runs as a cron job and sends notifications (Slack, etc.) when new subdomains appear for monitored domains.
+
+Usage: Continuous monitoring for new subdomains via CT logs.
+Input: List of domains to monitor.
+Output: Alerts when new subdomains are discovered.

@@ -1,0 +1,13 @@
+subjack
+=======
+
+URL: https://github.com/haccer/subjack
+
+Subdomain takeover tool written in Go. Tests CNAME records against known vulnerable service fingerprints.
+
+Usage: Detect subdomain takeover vulnerabilities.
+Input: List of subdomains.
+Output: Vulnerable subdomains.
+
+Example:
+  subjack -w subdomains.txt -t 100 -timeout 30 -ssl -a

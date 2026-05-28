@@ -1,0 +1,10 @@
+SubOver
+=======
+
+URL: https://github.com/Ice3man543/SubOver
+
+Subdomain takeover tool written in Go. Checks for takeover possibilities on various services by testing CNAME records and service responses.
+
+Usage: Subdomain takeover detection.
+Input: List of subdomains.
+Output: Takeover-vulnerable subdomains.

@@ -1,0 +1,15 @@
+SQLmap
+======
+
+URL: https://github.com/sqlmapproject/sqlmap
+
+The go-to automated SQL injection detection and exploitation tool. Supports virtually all SQL databases. Can enumerate databases, dump data, and get OS shell access.
+
+Usage: Detect and exploit SQL injection vulnerabilities.
+Input: Target URL with injectable parameter.
+Output: Database enumeration, data extraction, OS shell.
+
+Example:
+  sqlmap -u 'https://example.com/page?id=1' --dbs
+  sqlmap -u 'https://example.com/page?id=1' -D dbname --tables
+  sqlmap -r request.txt --batch
