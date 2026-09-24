@@ -42,16 +42,48 @@ A self-hosted security-recon platform that ingests bug-bounty program scopes, ru
 
 Python (stdlib-heavy by design on the agent side), Flask, SQLite (WAL), Docker, systemd, WireGuard + Linux network namespaces, GitHub Actions, Nuclei, and the ProjectDiscovery tool ecosystem (subfinder/httpx/naabu/katana/dnsx).
 
-## Running it
+## Quickstart
+
+The only required credential is a HackerOne API token
+([hackerone.com/settings/api_token](https://hackerone.com/settings/api_token/edit)).
+That alone gets you the dashboard; the security toolchain and egress pool are
+layered on after.
+
+```bash
+cp .env.example .env          # add H1_API_USERNAME + H1_API_TOKEN
+docker compose up -d --build  # dashboard on http://localhost:5000
+```
+
+Or run Flask directly:
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env          # fill in HackerOne API credentials
+cp .env.example .env
 export PYTHONPATH=src
-python -m cli.ingest          # populate the local DB
-python -m app.web             # dashboard on http://localhost:5000
-python src/daemons/recon_agent.py   # scan agent (needs the security tools installed)
+python -m cli.ingest                 # populate the local DB
+python -m app.web                    # dashboard on http://localhost:5000
+python src/daemons/recon_agent.py    # scan agent (needs the security tools installed)
 ```
 
-Or with Docker: `docker compose up -d --build`.
+## Setup & configuration
+
+**[SETUP.md](SETUP.md)** is the full guide — it walks through three tiers (local
+dashboard → real scanning → full deployment) and documents every key and
+external service the platform can use, all sourced from `.env` (see
+[`.env.example`](.env.example)):
+
+| Service | Required? | Used for |
+|---|---|---|
+| HackerOne API | Yes | Ingesting program scopes |
+| Security toolchain (ProjectDiscovery, nmap, nuclei, …) | For scanning | The recon tools themselves |
+| Docker | Recommended | Running the web app |
+| age | Optional | Encrypting stored credentials at rest |
+| Hetzner Cloud + Tailscale + WireGuard | For the egress pool | Parallel, guarded scan egress |
+| Telegram | Optional | Run notifications |
+| GitHub Actions self-hosted runner | For CI/CD | Push-to-deploy |
+
+## License
+
+[MIT](LICENSE) © 2026 Jake Garnier. For authorized security testing only — scan
+only targets you are permitted to test, within the relevant program's scope.
